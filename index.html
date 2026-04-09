@@ -58,21 +58,22 @@
   </div>
 
   <script>
-    let btcPrice = 71889;
+    let btcPrice = 71889;  // live spot price
+    let powerLawPrice = 250000; // conservative Power Law fair value for post-2028 horizon
     let wtiPrice = 96.78;
     let aecoPrice = 1.78;
 
     const GAS_VOLUME_M3_PER_DAY = 20000;
     const M70S_HASHRATE = 244;
     const M70S_POWER_KW = 3.14;
-    const BASE_INVEST_CAD = 12500000;   // Consolidated conservative base investment
+    const BASE_INVEST_CAD = 12500000;
     const GJ_PER_E3M3 = 44;
 
     const SQM_PER_MINER = 0.12;
 
-    // Realistic fixed sats/TH/s/day based on April 2026 data
-    const BEAR_SATS_PER_TH = 35;   // ~$25 USD/PH/s
-    const BASE_SATS_PER_TH = 45;   // ~$32.55 USD/PH/s (your CSV)
+    // Realistic fixed sats/TH/s/day
+    const BEAR_SATS_PER_TH = 35;
+    const BASE_SATS_PER_TH = 45;
     const BULL_SATS_PER_TH = 55;
 
     async function fetchLivePrices() {
@@ -134,7 +135,7 @@
       const dailySatsPerMiner = dailySatsMinedPerUnit(scenario, isPostHalving);
       const totalDailySats = minersSupported * dailySatsPerMiner;
 
-      const dailyRevUSD = (totalDailySats / 100000000) * btcPrice;
+      const dailyRevUSD = (totalDailySats / 100000000) * (isPostHalving ? powerLawPrice : btcPrice);
       const paybackMonths = dailyRevUSD > 0 
         ? ((BASE_INVEST_CAD / (dailyRevUSD * 1.39)) / 30).toFixed(1) 
         : "N/A";
@@ -153,7 +154,6 @@
       const basePost = getSetupMetrics("base", true);
       const bullPost = getSetupMetrics("bull", true);
 
-      // Use Base Case for Mining Revenue and Multiplier
       const miningBase = satsPerGJ_Mining("base");
       const multiplier = (miningBase / satsPerGJ_AECO()).toFixed(1) || "—";
 
@@ -196,7 +196,7 @@
         { code: "PAYBACK", label: "Payback Period", color: "lime", 
           value: `${bearNow.paybackMonths}<br>${baseNow.paybackMonths}<br>${bullNow.paybackMonths}`, 
           unit: "Bear<br>Base<br>Bull (months)", 
-          tooltip: `Time to recover C$${BASE_INVEST_CAD.toLocaleString()} at $${btcPrice.toLocaleString()} USD/BTC` }
+          tooltip: `Now (spot BTC price) vs Post-2028 (Power Law projected ~$250k BTC)\nTime to recover C$${BASE_INVEST_CAD.toLocaleString()}` }
       ];
 
       const container = document.getElementById("cards");
