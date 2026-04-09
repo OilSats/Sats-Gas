@@ -65,7 +65,7 @@
     const GAS_VOLUME_M3_PER_DAY = 20000;
     const M70S_HASHRATE = 244;
     const M70S_POWER_KW = 3.14;
-    const BASE_INVEST_CAD = 12500000;   // New consolidated conservative base investment
+    const BASE_INVEST_CAD = 12500000;   // Consolidated conservative base investment
     const GJ_PER_E3M3 = 44;
 
     const SQM_PER_MINER = 0.12;
@@ -153,8 +153,9 @@
       const basePost = getSetupMetrics("base", true);
       const bullPost = getSetupMetrics("bull", true);
 
-      const miningBear = satsPerGJ_Mining("bear");
-      const multiplier = (miningBear / satsPerGJ_AECO()).toFixed(1) || "—";
+      // Use Base Case for Mining Revenue and Multiplier
+      const miningBase = satsPerGJ_Mining("base");
+      const multiplier = (miningBase / satsPerGJ_AECO()).toFixed(1) || "—";
 
       const { minersSupported, sqMeters, totalPowerMW } = getGasPoweredMetrics();
 
@@ -163,12 +164,12 @@
         { code: "AECO", label: "AECO Alberta", color: "amber", value: formatNumber(satsPerGJ_AECO()), unit: "SATS / GJ", tooltip: `AECO: C$${aecoPrice.toFixed(2)} / GJ (last daily open)` },
 
         { code: "MINING", label: "M70S+ Mining Revenue", color: "sky", 
-          value: formatNumber(miningBear), 
-          unit: `<span class="sats-unit">SATS / GJ (Bear Case)</span>`, 
-          tooltip: `Bear case: 35 sats/TH/s/day ($25 USD/PH/s)\nMining revenue per GJ using own gas with M70S+ ASICs\n(using 44 GJ per e³m³ gas energy content)` },
+          value: formatNumber(miningBase), 
+          unit: `<span class="sats-unit">SATS / GJ (Base Case)</span>`, 
+          tooltip: `Base case: 45 sats/TH/s/day (~$32.55 USD/PH/s)\nMining revenue per GJ using own gas with M70S+ ASICs\n(using 44 GJ per e³m³ gas energy content)` },
 
         { code: "MULTIPLIER", label: "Mining Multiplier", color: "violet", value: multiplier, unit: "×", 
-          tooltip: `Mining revenue vs selling raw AECO gas\n(Bear case only)` },
+          tooltip: `Mining revenue vs selling raw AECO gas\n(Base case only)` },
 
         { code: "DAILY_NOW", label: "Daily Sats (Now)", color: "cyan", 
           value: `${formatNumber(bearNow.totalDailySats)}   ${formatNumber(baseNow.totalDailySats)}   ${formatNumber(bullNow.totalDailySats)}`, 
@@ -193,8 +194,8 @@
         { code: "FOOTPRINT", label: "Physical Footprint", color: "emerald", value: formatNumber(sqMeters), unit: `<span class="footprint-unit">m²</span>`, tooltip: `Space required for ${formatNumber(minersSupported)} M70S+ miners\n(~0.12 m² per miner including racking & airflow)` },
 
         { code: "PAYBACK", label: "Payback Period", color: "lime", 
-          value: `${bearNow.paybackMonths} / ${baseNow.paybackMonths} / ${bullNow.paybackMonths}`, 
-          unit: "Bear / Base / Bull (months)", 
+          value: `${bearNow.paybackMonths}<br>${baseNow.paybackMonths}<br>${bullNow.paybackMonths}`, 
+          unit: "Bear<br>Base<br>Bull (months)", 
           tooltip: `Time to recover C$${BASE_INVEST_CAD.toLocaleString()} at $${btcPrice.toLocaleString()} USD/BTC` }
       ];
 
