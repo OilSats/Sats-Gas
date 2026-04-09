@@ -41,7 +41,6 @@
     .sats-unit { color: #f97316; font-weight: 500; }
     .cad-unit  { color: #f87171; font-weight: 500; }
     .footprint-unit { color: #4ade80; font-weight: 500; }
-    .power-unit { color: #60a5fa; font-weight: 500; }
   </style>
 </head>
 <body class="bg-[#0a0a0a] text-white min-h-screen">
@@ -150,10 +149,7 @@
       const bullPost = getSetupMetrics("bull", true);
 
       const miningBear = satsPerGJ_Mining("bear");
-      const miningBase = satsPerGJ_Mining("base");
-      const miningBull = satsPerGJ_Mining("bull");
-
-      const multiplier = (miningBase / satsPerGJ_AECO()).toFixed(1) || "—";
+      const multiplier = (miningBear / satsPerGJ_AECO()).toFixed(1) || "—";
 
       const { minersSupported, sqMeters, totalPowerMW } = getGasPoweredMetrics();
 
@@ -162,12 +158,12 @@
         { code: "AECO", label: "AECO Alberta", color: "amber", value: formatNumber(satsPerGJ_AECO()), unit: "SATS / GJ", tooltip: `AECO: C$${aecoPrice.toFixed(2)} / GJ (last daily open)` },
 
         { code: "MINING", label: "M70S+ Mining Revenue", color: "sky", 
-          value: `${formatNumber(miningBear)}   ${formatNumber(miningBase)}   ${formatNumber(miningBull)}`, 
-          unit: `<span class="sats-unit">SATS / GJ (Bear / Base / Bull)</span>`, 
-          tooltip: `Mining revenue per GJ using own gas with M70S+ ASICs\n(using 44 GJ per e³m³ gas energy content)` },
+          value: formatNumber(miningBear), 
+          unit: `<span class="sats-unit">SATS / GJ (Bear Case)</span>`, 
+          tooltip: `Bear case hashprice: 347 sats/TH/s/day\n($25 USD per PH/s per day)\nMining revenue per GJ using own gas with M70S+ ASICs\n(using 44 GJ per e³m³ gas energy content)` },
 
         { code: "MULTIPLIER", label: "Mining Multiplier", color: "violet", value: multiplier, unit: "×", 
-          tooltip: `Mining vs selling raw AECO gas\n(Base case multiplier)` },
+          tooltip: `Mining revenue vs selling raw AECO gas\n(Bear case only)` },
 
         { code: "DAILY_NOW", label: "Daily Sats (Now)", color: "cyan", 
           value: `${formatNumber(bearNow.totalDailySats)}   ${formatNumber(baseNow.totalDailySats)}   ${formatNumber(bullNow.totalDailySats)}`, 
@@ -182,7 +178,7 @@
         { code: "POWER", label: "Power Required", color: "blue", 
           value: totalPowerMW, 
           unit: `<span class="power-unit">MW</span>`, 
-          tooltip: `Total electrical power required to run all miners\n(using 44 GJ per e³m³ gas energy content)` },
+          tooltip: `Total electrical power required\n(using 44 GJ per e³m³ gas energy content)` },
 
         { code: "INVESTMENT", label: "Base Investment (Conservative)", color: "rose", value: formatCAD(15800000), unit: `<span class="cad-unit">CAD</span>`, tooltip: `ASICs (809 units)          C$5.3M\nContainers & Racking       C$0.45M\nSour Gas Turbines + Skids  C$3.2M\nElectrical + Switchgear    C$1.8M\nSite Prep + Installation   C$1.6M\nEngineering + Contingency  C$3.45M\n────────────────────────────\nTotal Base                 C$15.8M` },
 
