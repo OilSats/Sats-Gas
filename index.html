@@ -65,15 +65,15 @@
     const GAS_VOLUME_M3_PER_DAY = 20000;
     const M70S_HASHRATE = 244;
     const M70S_POWER_KW = 3.14;
-    const TOTAL_INVEST_CAD = 17800000;
+    const BASE_INVEST_CAD = 12500000;   // New consolidated conservative base investment
     const GJ_PER_E3M3 = 44;
 
     const SQM_PER_MINER = 0.12;
 
-    // Verifiable fixed sats/TH/s/day from your April 2026 data
-    const BEAR_SATS_PER_TH = 35;   // $25 USD/PH/s
-    const BASE_SATS_PER_TH = 45;   // ~$32.55 USD/PH/s (your CSV latest)
-    const BULL_SATS_PER_TH = 55;   // optimistic
+    // Realistic fixed sats/TH/s/day based on April 2026 data
+    const BEAR_SATS_PER_TH = 35;   // ~$25 USD/PH/s
+    const BASE_SATS_PER_TH = 45;   // ~$32.55 USD/PH/s (your CSV)
+    const BULL_SATS_PER_TH = 55;
 
     async function fetchLivePrices() {
       console.log("=== Fetching live prices ===");
@@ -136,7 +136,7 @@
 
       const dailyRevUSD = (totalDailySats / 100000000) * btcPrice;
       const paybackMonths = dailyRevUSD > 0 
-        ? ((TOTAL_INVEST_CAD / (dailyRevUSD * 1.39)) / 30).toFixed(1) 
+        ? ((BASE_INVEST_CAD / (dailyRevUSD * 1.39)) / 30).toFixed(1) 
         : "N/A";
 
       return { totalDailySats, paybackMonths };
@@ -173,30 +173,29 @@
         { code: "DAILY_NOW", label: "Daily Sats (Now)", color: "cyan", 
           value: `${formatNumber(bearNow.totalDailySats)}   ${formatNumber(baseNow.totalDailySats)}   ${formatNumber(bullNow.totalDailySats)}`, 
           unit: `<span class="sats-unit">SATS/day (Bear / Base / Bull)</span>`, 
-          tooltip: `Bear: 35 sats/TH/s/day ($25 USD/PH/s) | Base: 45 sats/TH/s/day (~$32.55 USD/PH/s) | Bull: 55 sats/TH/s/day\nSource: Your bitcoin-hashprice-index-20260409.csv (April 8, 2026) + Braiins chart\nPre-halving • 20 e³m³/d gas • 44 GJ/e³m³ • M70S+ ASICs` },
+          tooltip: `Bear: 35 sats/TH/s/day ($25 USD/PH/s) | Base: 45 sats/TH/s/day (~$32.55 USD/PH/s) | Bull: 55 sats/TH/s/day\nSource: bitcoin-hashprice-index-20260409.csv (April 2026) + Braiins chart\nPre-halving • 20 e³m³/d gas • 44 GJ/e³m³ • M70S+ ASICs` },
 
         { code: "DAILY_POST", label: "Daily Sats (Post 2028)", color: "purple", 
           value: `${formatNumber(bearPost.totalDailySats)}   ${formatNumber(basePost.totalDailySats)}   ${formatNumber(bullPost.totalDailySats)}`, 
           unit: `<span class="sats-unit">SATS/day (Bear / Base / Bull)</span>`, 
-          tooltip: `Bear: 35 sats/TH/s/day ($25 USD/PH/s) | Base: 45 sats/TH/s/day (~$32.55 USD/PH/s) | Bull: 55 sats/TH/s/day\n(55% hashprice reduction after 2028 halving)\nSource: Your bitcoin-hashprice-index-20260409.csv (April 8, 2026) + Braiins chart\n20 e³m³/d gas • 44 GJ/e³m³ • M70S+ ASICs` },
+          tooltip: `Bear: 35 sats/TH/s/day ($25 USD/PH/s) | Base: 45 sats/TH/s/day (~$32.55 USD/PH/s) | Bull: 55 sats/TH/s/day\n(55% hashprice reduction after 2028 halving)\nSource: bitcoin-hashprice-index-20260409.csv (April 2026) + Braiins chart\n20 e³m³/d gas • 44 GJ/e³m³ • M70S+ ASICs` },
 
         { code: "POWER", label: "Power Required", color: "blue", 
           value: totalPowerMW, 
           unit: `<span class="power-unit">MW</span>`, 
           tooltip: `Total electrical power required\n(using 44 GJ per e³m³ gas energy content)` },
 
-        { code: "INVESTMENT", label: "Base Investment (Conservative)", color: "rose", value: formatCAD(15800000), unit: `<span class="cad-unit">CAD</span>`, tooltip: `ASICs (809 units)          C$5.3M\nContainers & Racking       C$0.45M\nSour Gas Turbines + Skids  C$3.2M\nElectrical + Switchgear    C$1.8M\nSite Prep + Installation   C$1.6M\nEngineering + Contingency  C$3.45M\n────────────────────────────\nTotal Base                 C$15.8M` },
-
-        { code: "SOUND", label: "Sound Mitigation (Conservative)", color: "rose", value: formatCAD(2000000), unit: `<span class="cad-unit">CAD</span>`, tooltip: "Acoustic enclosures + barriers to ~40-45 dBA\n(Turbines are already quieter than reciprocating gensets)" },
-
-        { code: "TOTAL_INVEST", label: "Total Investment (Conservative)", color: "rose", value: formatCAD(TOTAL_INVEST_CAD), unit: `<span class="cad-unit">CAD</span>`, tooltip: "Base Investment + Sound Mitigation\nReal-world total expected to come in lower" },
+        { code: "BASE_INVEST", label: "Base Investment", color: "rose", 
+          value: formatCAD(BASE_INVEST_CAD), 
+          unit: `<span class="cad-unit">CAD</span>`, 
+          tooltip: `Conservative estimate covering:\n• ASICS (M70S+ miners)\n• Sour Gas Turbines + Skids\n• Data Center Infrastructure (containers, racking, electrical, site prep)\nTotal: C$12.5M (actual expected lower)` },
 
         { code: "FOOTPRINT", label: "Physical Footprint", color: "emerald", value: formatNumber(sqMeters), unit: `<span class="footprint-unit">m²</span>`, tooltip: `Space required for ${formatNumber(minersSupported)} M70S+ miners\n(~0.12 m² per miner including racking & airflow)` },
 
         { code: "PAYBACK", label: "Payback Period", color: "lime", 
           value: `${bearNow.paybackMonths} / ${baseNow.paybackMonths} / ${bullNow.paybackMonths}`, 
           unit: "Bear / Base / Bull (months)", 
-          tooltip: `Time to recover C$${TOTAL_INVEST_CAD.toLocaleString()} at $${btcPrice.toLocaleString()} USD/BTC` }
+          tooltip: `Time to recover C$${BASE_INVEST_CAD.toLocaleString()} at $${btcPrice.toLocaleString()} USD/BTC` }
       ];
 
       const container = document.getElementById("cards");
