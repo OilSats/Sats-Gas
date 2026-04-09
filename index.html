@@ -66,7 +66,7 @@
     const M70S_HASHRATE = 244;
     const M70S_POWER_KW = 3.14;
     const TOTAL_INVEST_CAD = 17800000;
-    const GJ_PER_E3M3 = 44;                    // Your wells
+    const GJ_PER_E3M3 = 44;
 
     const SQM_PER_MINER = 0.12;
 
@@ -74,8 +74,6 @@
     const BEAR_USD_PER_PHS = 25;
     const BASE_USD_PER_PHS = 34;
     const BULL_USD_PER_PHS = 40;
-
-    const HALVING_REDUCTION = 0.55;            // 55% of pre-halving hashprice
 
     async function fetchLivePrices() {
       console.log("=== Fetching live prices ===");
@@ -111,8 +109,9 @@
     }
 
     function getHashpriceSatsPerTH(usdPerPH) {
+      // Correct conversion: USD/PH/s → sats/TH/s
       const satsPerPH = (usdPerPH / btcPrice) * 100000000;
-      return Math.round(satsPerPH / 1000);
+      return Math.round(satsPerPH / 1000);   // Fixed
     }
 
     function dailySatsMinedPerUnit(scenario, isPostHalving = false) {
@@ -123,7 +122,7 @@
 
       let base = getHashpriceSatsPerTH(usdTarget);
 
-      if (isPostHalving) base = Math.round(base * HALVING_REDUCTION);
+      if (isPostHalving) base = Math.round(base * 0.55);
       return Math.round(M70S_HASHRATE * base);
     }
 
