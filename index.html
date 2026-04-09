@@ -30,7 +30,7 @@
       margin-bottom: 10px;
       white-space: pre-line;
       width: max-content;
-      max-width: 380px;
+      max-width: 420px;
     }
     .widget-card:hover .tooltip,
     .widget-card:active .tooltip {
@@ -59,7 +59,7 @@
 
   <script>
     let btcPrice = 71889;               // Live spot price — Zero Day is always "today"
-    let powerLawPrice = 250000;         // Conservative Power Law projection for post-2028
+    let powerLawPrice = 250000;         // Conservative Power Law projection for long-term (2028+)
     let wtiPrice = 96.78;
     let aecoPrice = 1.78;
 
@@ -204,7 +204,7 @@
         { code: "PAYBACK", label: "Payback Period", color: "lime", 
           value: `${bearNow.paybackMonths}<br>${baseNow.paybackMonths}<br>${bullNow.paybackMonths}`, 
           unit: "Bear<br>Base<br>Bull (months)", 
-          tooltip: `Bear: pre-halving sats up to 24 months, then switches to post-halving if longer\nPower Law ~$250k BTC for long-term view` }
+          tooltip: `Bitcoin Power Law: Long-term price follows Price ≈ A × (time since 2009)^5.8 (R² ≈ 0.955)\n• Short paybacks (<24 months) use today's live BTC price\n• Bear case >24 months switches to post-halving sats + Power Law projection (~$250k BTC)\nTime to recover C$${BASE_INVEST_CAD.toLocaleString()}` }
       ];
 
       const container = document.getElementById("cards");
