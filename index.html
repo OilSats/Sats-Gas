@@ -70,10 +70,10 @@
 
     const SQM_PER_MINER = 0.12;
 
-    // Fixed USD targets per PH/s per day
-    const BEAR_USD_PER_PHS = 25;
-    const BASE_USD_PER_PHS = 34;
-    const BULL_USD_PER_PHS = 40;
+    // Verifiable fixed sats/TH/s/day from your April 2026 data
+    const BEAR_SATS_PER_TH = 35;   // $25 USD/PH/s
+    const BASE_SATS_PER_TH = 45;   // ~$32.55 USD/PH/s (your CSV latest)
+    const BULL_SATS_PER_TH = 55;   // optimistic
 
     async function fetchLivePrices() {
       console.log("=== Fetching live prices ===");
@@ -108,19 +108,11 @@
       return { minersSupported, sqMeters, totalPowerMW };
     }
 
-    function getHashpriceSatsPerTH(usdPerPH) {
-      // Correct conversion: USD/PH/s → sats/TH/s
-      const satsPerPH = (usdPerPH / btcPrice) * 100000000;
-      return Math.round(satsPerPH / 1000);   // Fixed
-    }
-
     function dailySatsMinedPerUnit(scenario, isPostHalving = false) {
-      let usdTarget;
-      if (scenario === "bear") usdTarget = BEAR_USD_PER_PHS;
-      else if (scenario === "bull") usdTarget = BULL_USD_PER_PHS;
-      else usdTarget = BASE_USD_PER_PHS;
-
-      let base = getHashpriceSatsPerTH(usdTarget);
+      let base;
+      if (scenario === "bear") base = BEAR_SATS_PER_TH;
+      else if (scenario === "bull") base = BULL_SATS_PER_TH;
+      else base = BASE_SATS_PER_TH;
 
       if (isPostHalving) base = Math.round(base * 0.55);
       return Math.round(M70S_HASHRATE * base);
@@ -164,10 +156,6 @@
       const miningBear = satsPerGJ_Mining("bear");
       const multiplier = (miningBear / satsPerGJ_AECO()).toFixed(1) || "—";
 
-      const bearHashSats = getHashpriceSatsPerTH(BEAR_USD_PER_PHS);
-      const baseHashSats = getHashpriceSatsPerTH(BASE_USD_PER_PHS);
-      const bullHashSats = getHashpriceSatsPerTH(BULL_USD_PER_PHS);
-
       const { minersSupported, sqMeters, totalPowerMW } = getGasPoweredMetrics();
 
       const items = [
@@ -177,7 +165,7 @@
         { code: "MINING", label: "M70S+ Mining Revenue", color: "sky", 
           value: formatNumber(miningBear), 
           unit: `<span class="sats-unit">SATS / GJ (Bear Case)</span>`, 
-          tooltip: `Bear case target: $${BEAR_USD_PER_PHS} USD per PH/s per day\n(${bearHashSats} sats/TH/s at current BTC price)\nMining revenue per GJ using own gas with M70S+ ASICs\n(using 44 GJ per e³m³ gas energy content)` },
+          tooltip: `Bear case: 35 sats/TH/s/day ($25 USD/PH/s)\nMining revenue per GJ using own gas with M70S+ ASICs\n(using 44 GJ per e³m³ gas energy content)` },
 
         { code: "MULTIPLIER", label: "Mining Multiplier", color: "violet", value: multiplier, unit: "×", 
           tooltip: `Mining revenue vs selling raw AECO gas\n(Bear case only)` },
@@ -185,12 +173,12 @@
         { code: "DAILY_NOW", label: "Daily Sats (Now)", color: "cyan", 
           value: `${formatNumber(bearNow.totalDailySats)}   ${formatNumber(baseNow.totalDailySats)}   ${formatNumber(bullNow.totalDailySats)}`, 
           unit: `<span class="sats-unit">SATS/day (Bear / Base / Bull)</span>`, 
-          tooltip: `Daily sats using 20 e³m³/d gas • 44 GJ/e³m³ • M70S+ ASICs • Pre-halving\nBear: $${BEAR_USD_PER_PHS} USD/PH/s | Base: $${BASE_USD_PER_PHS} | Bull: $${BULL_USD_PER_PHS}` },
+          tooltip: `Bear: 35 sats/TH/s/day ($25 USD/PH/s) | Base: 45 sats/TH/s/day (~$32.55 USD/PH/s) | Bull: 55 sats/TH/s/day\nSource: Your bitcoin-hashprice-index-20260409.csv (April 8, 2026) + Braiins chart\nPre-halving • 20 e³m³/d gas • 44 GJ/e³m³ • M70S+ ASICs` },
 
         { code: "DAILY_POST", label: "Daily Sats (Post 2028)", color: "purple", 
           value: `${formatNumber(bearPost.totalDailySats)}   ${formatNumber(basePost.totalDailySats)}   ${formatNumber(bullPost.totalDailySats)}`, 
           unit: `<span class="sats-unit">SATS/day (Bear / Base / Bull)</span>`, 
-          tooltip: `Daily sats using 20 e³m³/d gas • 44 GJ/e³m³ • M70S+ ASICs • After 2028 halving\n(55% hashprice reduction)\nBear: $${BEAR_USD_PER_PHS} USD/PH/s | Base: $${BASE_USD_PER_PHS} | Bull: $${BULL_USD_PER_PHS}` },
+          tooltip: `Bear: 35 sats/TH/s/day ($25 USD/PH/s) | Base: 45 sats/TH/s/day (~$32.55 USD/PH/s) | Bull: 55 sats/TH/s/day\n(55% hashprice reduction after 2028 halving)\nSource: Your bitcoin-hashprice-index-20260409.csv (April 8, 2026) + Braiins chart\n20 e³m³/d gas • 44 GJ/e³m³ • M70S+ ASICs` },
 
         { code: "POWER", label: "Power Required", color: "blue", 
           value: totalPowerMW, 
