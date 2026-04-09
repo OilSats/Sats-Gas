@@ -58,8 +58,8 @@
   </div>
 
   <script>
-    let btcPrice = 71889;               // Live spot price — Zero Day is always today
-    let powerLawPrice = 250000;         // Conservative Power Law projection for long-term
+    let btcPrice = 71889;
+    let powerLawPrice = 250000;
     let wtiPrice = 96.78;
     let aecoPrice = 1.78;
 
@@ -131,24 +131,38 @@
 
     function getSetupMetrics(scenario, isPostHalving = false) {
       const { minersSupported } = getGasPoweredMetrics();
-      let dailySatsPerMiner = dailySatsMinedPerUnit(scenario, isPostHalving);
-      let totalDailySats = minersSupported * dailySatsPerMiner;
+      const dailySatsPerMiner = dailySatsMinedPerUnit(scenario, isPostHalving);
+      const totalDailySats = minersSupported * dailySatsPerMiner;
 
-      let usedBtcPrice = isPostHalving ? powerLawPrice : btcPrice;
-      let dailyRevUSD = (totalDailySats / 100000000) * usedBtcPrice;
+      const usedBtcPrice = isPostHalving ? powerLawPrice : btcPrice;
+      const dailyRevUSD = (totalDailySats / 100000000) * usedBtcPrice;
       let paybackMonths = dailyRevUSD > 0 
         ? ((BASE_INVEST_CAD / (dailyRevUSD * 1.39)) / 30) 
         : 999;
 
-      // Bear rule: use pre-halving up to 24 months, then switch to post-halving if longer
       if (scenario === "bear" && paybackMonths > 24 && !isPostHalving) {
-        dailySatsPerMiner = dailySatsMinedPerUnit("bear", true);
-        totalDailySats = minersSupported * dailySatsPerMiner;
-        dailyRevUSD = (totalDailySats / 100000000) * powerLawPrice;
-        paybackMonths = (BASE_INVEST_CAD / (dailyRevUSD * 1.39)) / 30;
+        const postDailySatsPerMiner = dailySatsMinedPerUnit("bear", true);
+        const postTotalDailySats = minersSupported * postDailySatsPerMiner;
+        const postDailyRevUSD = (postTotalDailySats / 100000000) * powerLawPrice;
+        paybackMonths = (BASE_INVEST_CAD / (postDailyRevUSD * 1.39)) / 30;
       }
 
       return { totalDailySats: Math.round(totalDailySats), paybackMonths: paybackMonths.toFixed(1) };
+    }
+
+    function calculateBtcPriceFor8MonthPayback() {
+      const { minersSupported } = getGasPoweredMetrics();
+      const dailySatsPerMiner = dailySatsMinedPerUnit("base", false); // Base case pre-halving
+      const totalDailySats = minersSupported * dailySatsPerMiner;
+
+      // Required daily revenue in USD for 8 months payback
+      const months = 8;
+      const requiredDailyRevCAD = BASE_INVEST_CAD / months;
+      const requiredDailyRevUSD = requiredDailyRevCAD / 1.39;
+
+      // Solve for BTC price
+      const requiredBtcPrice = (requiredDailyRevUSD * 100000000) / totalDailySats;
+      return Math.round(requiredBtcPrice);
     }
 
     function formatNumber(num) { return (num || 0).toLocaleString('en-US'); }
@@ -161,6 +175,8 @@
 
       const miningBase = satsPerGJ_Mining("base");
       const multiplier = (miningBase / satsPerGJ_AECO()).toFixed(1) || "—";
+
+      const btcFor8Month = calculateBtcPriceFor8MonthPayback();
 
       const { minersSupported, sqMeters, totalPowerMW } = getGasPoweredMetrics();
 
@@ -181,10 +197,10 @@
           unit: `<span class="sats-unit">SATS/day (Bear / Base / Bull)</span>`, 
           tooltip: `Bear: 35 sats/TH/s/day ($25 USD/PH/s) | Base: 45 sats/TH/s/day (~$32.55 USD/PH/s) | Bull: 55 sats/TH/s/day\nSource: bitcoin-hashprice-index-20260409.csv (April 2026) + Braiins chart` },
 
-        { code: "DAILY_POST", label: "Daily Sats (Post 2028)", color: "purple", 
-          value: `${formatNumber(bearNow.totalDailySats * 0.55)}   ${formatNumber(baseNow.totalDailySats * 0.55)}   ${formatNumber(bullNow.totalDailySats * 0.55)}`, 
-          unit: `<span class="sats-unit">SATS/day (Bear / Base / Bull)</span>`, 
-          tooltip: `55% hashprice reduction after 2028 halving` },
+        { code: "BTC_8MONTH", label: "BTC Price for 8 Month Payback", color: "amber", 
+          value: formatNumber(btcFor8Month), 
+          unit: "USD", 
+          tooltip: `BTC price required for exactly 8 months payback using Base Case daily sats (45 sats/TH/s pre-halving)` },
 
         { code: "POWER", label: "Power Required", color: "blue", 
           value: totalPowerMW, 
@@ -201,7 +217,7 @@
         { code: "PAYBACK", label: "Payback Period", color: "lime", 
           value: `${bearNow.paybackMonths}<br>${baseNow.paybackMonths}<br>${bullNow.paybackMonths}`, 
           unit: "Bear<br>Base<br>Bull (months)", 
-          tooltip: `Bitcoin Power Law: Price ≈ A × (time since 2009)^5.8 (R² ≈ 0.955)\n• Bear: pre-halving sats up to 24 months, then switches to post-halving if longer\n• Base & Bull: always use pre-halving sats\nZero Day = today (live BTC price)` }
+          tooltip: `Bear: pre-halving sats up to 24 months, then switches to post-halving if longer\nPower Law ~$250k BTC for long-term view` }
       ];
 
       const container = document.getElementById("cards");
