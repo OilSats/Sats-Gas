@@ -59,8 +59,8 @@
 
   <script>
     let btcPrice = 71889;
-    let wtiPrice = 96.78;
-    let aecoPrice = 1.78;
+    let wtiPrice = 96.78;   // Last daily open fallback - will be updated when API succeeds
+    let aecoPrice = 1.78;   // Last daily open fallback
 
     const GAS_VOLUME_M3_PER_DAY = 20000;
     const M70S_HASHRATE = 244;
@@ -77,31 +77,32 @@
         const res = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd", { cache: "no-store" });
         if (res.ok) {
           const data = await res.json();
-          if (data.bitcoin?.usd) btcPrice = Math.round(data.bitcoin.usd);
-          console.log(`✅ BTC updated to: $${btcPrice}`);
+          if (data.bitcoin?.usd) {
+            btcPrice = Math.round(data.bitcoin.usd);
+            console.log(`✅ BTC updated to: $${btcPrice}`);
+          }
         }
       } catch (e) { console.warn("BTC fetch failed"); }
 
-      // WTI - Public source (no proxy needed)
+      // WTI - Try public source (no proxy)
       try {
         const res = await fetch("https://www.alphavantage.co/query?function=WTI&apikey=demo");
         if (res.ok) {
           const data = await res.json();
           if (data.data && data.data[0] && data.data[0].value) {
             wtiPrice = parseFloat(data.data[0].value);
-            console.log(`✅ WTI updated to: $${wtiPrice.toFixed(2)}`);
+            console.log(`✅ WTI live updated to: $${wtiPrice.toFixed(2)}`);
           }
         }
       } catch (e) {
-        console.warn("WTI fetch failed");
+        console.warn("WTI live fetch failed - using last daily open");
       }
 
+      // AECO - Public fallback (stable)
       console.log("AECO using last daily open value");
 
       document.getElementById("last-updated").textContent = `Last updated: ${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
     }
-
-    // ... [All the other functions remain exactly the same as in previous versions: getGasPoweredMetrics, dailySats..., satsPerGJ..., getSetupMetrics, formatNumber, formatCAD, createWidgets, updateDashboard, init]
 
     function getGasPoweredMetrics() {
       const gjPerDay = GAS_VOLUME_M3_PER_DAY * 0.0353;
@@ -158,8 +159,12 @@
       const { minersSupported, sqMeters } = getGasPoweredMetrics();
 
       const items = [
-        { code: "WTI", label: "WTI", color: "emerald", value: formatNumber(Math.round((wtiPrice / btcPrice) * 1e8)), unit: "SATS / bbl", tooltip: `WTI: $${wtiPrice.toFixed(2)} / bbl (last daily open)\nBTC: $${btcPrice.toLocaleString()} / BTC` },
-        { code: "AECO", label: "AECO Alberta", color: "amber", value: formatNumber(satsPerGJ_AECO()), unit: "SATS / GJ", tooltip: `AECO: C$${aecoPrice.toFixed(2)} / GJ (last daily open)` },
+        { code: "WTI", label: "WTI", color: "emerald", value: formatNumber(Math.round((wtiPrice / btcPrice) * 1e8)), unit: "SATS / bbl", 
+          tooltip: `WTI: $${wtiPrice.toFixed(2)} / bbl (last daily open or latest available)\nBTC: $${btcPrice.toLocaleString()} / BTC` },
+
+        { code: "AECO", label: "AECO Alberta", color: "amber", value: formatNumber(satsPerGJ_AECO()), unit: "SATS / GJ", 
+          tooltip: `AECO: C$${aecoPrice.toFixed(2)} / GJ (last daily open)` },
+
         { code: "MINING", label: "M70S+ Mining Revenue", color: "sky", value: formatNumber(satsPerGJ_Mining("base")), unit: "SATS / GJ", tooltip: "Mining revenue per GJ using own gas with M70S+ ASICs" },
         { code: "PREMIUM", label: "Mining Premium", color: "violet", value: premium, unit: "×", tooltip: "Mining vs selling raw AECO gas" },
 
@@ -210,7 +215,7 @@
     }
 
     init();
-    setInterval(updateDashboard, 300000);
+    setInterval(updateDashboard, 300000); // every 5 minutes
   </script>
 </body>
 </html>
