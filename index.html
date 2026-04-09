@@ -58,8 +58,8 @@
   </div>
 
   <script>
-    let btcPrice = 71889;               // Live spot price — Zero Day is always "today"
-    let powerLawPrice = 250000;         // Conservative Power Law projection for long-term (2028+)
+    let btcPrice = 71889;               // Live spot price — Zero Day is always today
+    let powerLawPrice = 250000;         // Conservative Power Law projection for long-term
     let wtiPrice = 96.78;
     let aecoPrice = 1.78;
 
@@ -131,21 +131,21 @@
 
     function getSetupMetrics(scenario, isPostHalving = false) {
       const { minersSupported } = getGasPoweredMetrics();
-      const dailySatsPerMiner = dailySatsMinedPerUnit(scenario, isPostHalving);
-      const totalDailySats = minersSupported * dailySatsPerMiner;
+      let dailySatsPerMiner = dailySatsMinedPerUnit(scenario, isPostHalving);
+      let totalDailySats = minersSupported * dailySatsPerMiner;
 
-      const usedBtcPrice = isPostHalving ? powerLawPrice : btcPrice;
-      const dailyRevUSD = (totalDailySats / 100000000) * usedBtcPrice;
+      let usedBtcPrice = isPostHalving ? powerLawPrice : btcPrice;
+      let dailyRevUSD = (totalDailySats / 100000000) * usedBtcPrice;
       let paybackMonths = dailyRevUSD > 0 
         ? ((BASE_INVEST_CAD / (dailyRevUSD * 1.39)) / 30) 
         : 999;
 
-      // Bear-specific rule: use pre-halving up to 24 months, then switch to post-halving if longer
+      // Bear rule: use pre-halving up to 24 months, then switch to post-halving if longer
       if (scenario === "bear" && paybackMonths > 24 && !isPostHalving) {
-        const postDailySatsPerMiner = dailySatsMinedPerUnit("bear", true);
-        const postTotalDailySats = minersSupported * postDailySatsPerMiner;
-        const postDailyRevUSD = (postTotalDailySats / 100000000) * powerLawPrice;
-        paybackMonths = (BASE_INVEST_CAD / (postDailyRevUSD * 1.39)) / 30;
+        dailySatsPerMiner = dailySatsMinedPerUnit("bear", true);
+        totalDailySats = minersSupported * dailySatsPerMiner;
+        dailyRevUSD = (totalDailySats / 100000000) * powerLawPrice;
+        paybackMonths = (BASE_INVEST_CAD / (dailyRevUSD * 1.39)) / 30;
       }
 
       return { totalDailySats: Math.round(totalDailySats), paybackMonths: paybackMonths.toFixed(1) };
@@ -158,9 +158,6 @@
       const bearNow = getSetupMetrics("bear", false);
       const baseNow = getSetupMetrics("base", false);
       const bullNow = getSetupMetrics("bull", false);
-      const bearPost = getSetupMetrics("bear", true);
-      const basePost = getSetupMetrics("base", true);
-      const bullPost = getSetupMetrics("bull", true);
 
       const miningBase = satsPerGJ_Mining("base");
       const multiplier = (miningBase / satsPerGJ_AECO()).toFixed(1) || "—";
@@ -182,12 +179,12 @@
         { code: "DAILY_NOW", label: "Daily Sats (Now)", color: "cyan", 
           value: `${formatNumber(bearNow.totalDailySats)}   ${formatNumber(baseNow.totalDailySats)}   ${formatNumber(bullNow.totalDailySats)}`, 
           unit: `<span class="sats-unit">SATS/day (Bear / Base / Bull)</span>`, 
-          tooltip: `Bear: 35 sats/TH/s/day ($25 USD/PH/s) | Base: 45 sats/TH/s/day (~$32.55 USD/PH/s) | Bull: 55 sats/TH/s/day\nSource: bitcoin-hashprice-index-20260409.csv (April 2026) + Braiins chart\nPre-halving • 20 e³m³/d gas • 44 GJ/e³m³ • M70S+ ASICs` },
+          tooltip: `Bear: 35 sats/TH/s/day ($25 USD/PH/s) | Base: 45 sats/TH/s/day (~$32.55 USD/PH/s) | Bull: 55 sats/TH/s/day\nSource: bitcoin-hashprice-index-20260409.csv (April 2026) + Braiins chart` },
 
         { code: "DAILY_POST", label: "Daily Sats (Post 2028)", color: "purple", 
-          value: `${formatNumber(bearPost.totalDailySats)}   ${formatNumber(basePost.totalDailySats)}   ${formatNumber(bullPost.totalDailySats)}`, 
+          value: `${formatNumber(bearNow.totalDailySats * 0.55)}   ${formatNumber(baseNow.totalDailySats * 0.55)}   ${formatNumber(bullNow.totalDailySats * 0.55)}`, 
           unit: `<span class="sats-unit">SATS/day (Bear / Base / Bull)</span>`, 
-          tooltip: `Bear: 35 sats/TH/s/day ($25 USD/PH/s) | Base: 45 sats/TH/s/day (~$32.55 USD/PH/s) | Bull: 55 sats/TH/s/day\n(55% hashprice reduction after 2028 halving)\nSource: bitcoin-hashprice-index-20260409.csv (April 2026) + Braiins chart\n20 e³m³/d gas • 44 GJ/e³m³ • M70S+ ASICs` },
+          tooltip: `55% hashprice reduction after 2028 halving` },
 
         { code: "POWER", label: "Power Required", color: "blue", 
           value: totalPowerMW, 
@@ -197,14 +194,14 @@
         { code: "BASE_INVEST", label: "Base Investment", color: "rose", 
           value: formatCAD(BASE_INVEST_CAD), 
           unit: `<span class="cad-unit">CAD</span>`, 
-          tooltip: `Conservative estimate covering:\n• ASICS (M70S+ miners)\n• Sour Gas Turbines + Skids\n• Data Center Infrastructure (containers, racking, electrical, site prep)\nTotal: C$12.5M (actual expected lower)` },
+          tooltip: `Conservative estimate covering:\n• ASICS (M70S+ miners)\n• Sour Gas Turbines + Skids\n• Data Center Infrastructure\nTotal: C$12.5M (actual expected lower)` },
 
         { code: "FOOTPRINT", label: "Physical Footprint", color: "emerald", value: formatNumber(sqMeters), unit: `<span class="footprint-unit">m²</span>`, tooltip: `Space required for ${formatNumber(minersSupported)} M70S+ miners\n(~0.12 m² per miner including racking & airflow)` },
 
         { code: "PAYBACK", label: "Payback Period", color: "lime", 
           value: `${bearNow.paybackMonths}<br>${baseNow.paybackMonths}<br>${bullNow.paybackMonths}`, 
           unit: "Bear<br>Base<br>Bull (months)", 
-          tooltip: `Bitcoin Power Law: Long-term price follows Price ≈ A × (time since 2009)^5.8 (R² ≈ 0.955)\n• Short paybacks (<24 months) use today's live BTC price\n• Bear case >24 months switches to post-halving sats + Power Law projection (~$250k BTC)\nTime to recover C$${BASE_INVEST_CAD.toLocaleString()}` }
+          tooltip: `Bitcoin Power Law: Price ≈ A × (time since 2009)^5.8 (R² ≈ 0.955)\n• Bear: pre-halving sats up to 24 months, then switches to post-halving if longer\n• Base & Bull: always use pre-halving sats\nZero Day = today (live BTC price)` }
       ];
 
       const container = document.getElementById("cards");
