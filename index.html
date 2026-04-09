@@ -58,8 +58,8 @@
   </div>
 
   <script>
-    let btcPrice = 71889;
-    let powerLawPrice = 250000; // conservative Power Law projection for 2028+
+    let btcPrice = 71889;               // Live spot price — Zero Day is always "today"
+    let powerLawPrice = 250000;         // Conservative Power Law projection for post-2028
     let wtiPrice = 96.78;
     let aecoPrice = 1.78;
 
@@ -134,12 +134,13 @@
       const dailySatsPerMiner = dailySatsMinedPerUnit(scenario, isPostHalving);
       const totalDailySats = minersSupported * dailySatsPerMiner;
 
-      const dailyRevUSD = (totalDailySats / 100000000) * (isPostHalving ? powerLawPrice : btcPrice);
+      const usedBtcPrice = isPostHalving ? powerLawPrice : btcPrice;
+      const dailyRevUSD = (totalDailySats / 100000000) * usedBtcPrice;
       let paybackMonths = dailyRevUSD > 0 
         ? ((BASE_INVEST_CAD / (dailyRevUSD * 1.39)) / 30) 
         : 999;
 
-      // Special Bear logic: use pre-halving up to 24 months, then switch to post-halving if longer
+      // Bear-specific rule: use pre-halving up to 24 months, then switch to post-halving if longer
       if (scenario === "bear" && paybackMonths > 24 && !isPostHalving) {
         const postDailySatsPerMiner = dailySatsMinedPerUnit("bear", true);
         const postTotalDailySats = minersSupported * postDailySatsPerMiner;
@@ -203,7 +204,7 @@
         { code: "PAYBACK", label: "Payback Period", color: "lime", 
           value: `${bearNow.paybackMonths}<br>${baseNow.paybackMonths}<br>${bullNow.paybackMonths}`, 
           unit: "Bear<br>Base<br>Bull (months)", 
-          tooltip: `Bear uses pre-halving sats up to 24 months, then switches to post-halving if longer\nPower Law projection ~$250k BTC for long-term` }
+          tooltip: `Bear: pre-halving sats up to 24 months, then switches to post-halving if longer\nPower Law ~$250k BTC for long-term view` }
       ];
 
       const container = document.getElementById("cards");
