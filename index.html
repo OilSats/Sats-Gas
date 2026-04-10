@@ -47,7 +47,7 @@
 
   <div class="max-w-6xl mx-auto px-4 sm:px-6 py-8">
     <div class="text-center text-gray-500 text-xs mb-2">
-      Version 2026-04-10 • All Math Fixed • 1,008 Miners • 11,067,840 SATS/day
+      Version 2026-04-10 • Realistic Sour Gas Turbines (30% eff.) • 973 Miners
     </div>
 
     <div id="last-updated" class="text-center text-gray-500 text-xs mb-6">
@@ -70,6 +70,7 @@
     const M70S_POWER_KW = 3.14;
     const BASE_INVEST_CAD = 12500000;
     const GJ_PER_E3M3 = 44;
+    const TURBINE_EFFICIENCY = 0.30;
 
     const SQM_PER_MINER = 0.12;
     const BASE_SATS_PER_TH = 45;
@@ -88,10 +89,11 @@
 
     function getGasPoweredMetrics() {
       const gjPerDay = GAS_VOLUME_M3_PER_DAY * (GJ_PER_E3M3 / 1000);           // 880 GJ/day
-      const totalKwhPerDay = gjPerDay * 277.8;                                 // FIXED: 1 GJ = 277.8 kWh
-      const totalPowerKW = totalKwhPerDay / 24;                                // 3,168 kW
+      const totalKwhPerDay = gjPerDay * 277.8;                                // 244,464 kWh thermal/day
+      const totalPowerKW_thermal = totalKwhPerDay / 24;                       // 10,186 kW thermal
+      const totalPowerKW = totalPowerKW_thermal * TURBINE_EFFICIENCY;         // 3,056 kW electrical
       const totalPowerMW = (totalPowerKW / 1000).toFixed(2);
-      const minersSupported = Math.floor(totalPowerKW / M70S_POWER_KW);        // 1,008 miners
+      const minersSupported = Math.floor(totalPowerKW / M70S_POWER_KW);       // 973 miners
       const sqMeters = Math.round(minersSupported * SQM_PER_MINER);
       return { minersSupported, sqMeters, totalPowerMW };
     }
@@ -110,7 +112,7 @@
       const dailyKwh = M70S_POWER_KW * 24;
       const gjPerDay = dailyKwh / 277.8;
       const dailySats = dailySatsMinedPerUnit(isPostHalving);
-      return Math.round(dailySats / gjPerDay);
+      return Math.round(dailySats / gjPerDay);   // Should be ~12,140
     }
 
     function getPowerLawBtcPrice(monthsFromNow) {
@@ -175,21 +177,43 @@
         { code: "WTI", label: "WTI", color: "emerald", value: formatNumber(Math.round((wtiPrice / btcPrice) * 1e8)), unit: "SATS / bbl", tooltip: `WTI: $${wtiPrice.toFixed(2)} / bbl (last daily open)` },
         { code: "AECO", label: "AECO Alberta", color: "amber", value: formatNumber(satsPerGJ_AECO()), unit: "SATS / GJ", tooltip: `AECO: C$${aecoPrice.toFixed(2)} / GJ (last daily open)` },
 
-        { code: "MINING", label: "M70S+ Mining Revenue", color: "sky", value: formatNumber(miningBase), unit: `<span class="sats-unit">SATS / GJ (Base)</span>`, tooltip: `Base case: 45 sats/TH/s/day (~$32.55 USD/PH/s)\nUsing M70S+ ASICs and 44 GJ per e³m³` },
+        { code: "MINING", label: "M70S+ Mining Revenue", color: "sky", 
+          value: formatNumber(miningBase), 
+          unit: `<span class="sats-unit">SATS / GJ (Base)</span>`, 
+          tooltip: `Base case: 45 sats/TH/s/day (~$32.55 USD/PH/s)\n973 miners × 10,980 sats/miner/day ÷ 880 GJ/day = 12,140 SATS/GJ` },
 
-        { code: "MULTIPLIER", label: "Mining Multiplier", color: "violet", value: multiplier, unit: "×", tooltip: `Mining revenue vs selling raw AECO gas (Base case)` },
+        { code: "MULTIPLIER", label: "Mining Multiplier", color: "violet", value: multiplier, unit: "×", 
+          tooltip: `Mining revenue vs selling raw AECO gas (Base case)` },
 
-        { code: "DAILY_NOW", label: "Daily Sats (Base Case)", color: "cyan", value: formatNumber(baseNow.totalDailySats), unit: `<span class="sats-unit">SATS/day</span>`, tooltip: `1,008 miners × 10,980 sats/miner/day = 11,067,840 SATS/day` },
+        { code: "DAILY_NOW", label: "Daily Sats (Base Case)", color: "cyan", 
+          value: formatNumber(baseNow.totalDailySats), 
+          unit: `<span class="sats-unit">SATS/day</span>`, 
+          tooltip: `973 M70S+ miners × 10,980 sats/miner/day = 10,683,540 SATS/day` },
 
-        { code: "POWER", label: "Power Required", color: "blue", value: totalPowerMW, unit: "MW", tooltip: `Total power from 20,000 m³/day at 44 GJ/e³m³` },
+        { code: "POWER", label: "Power Required", color: "blue", 
+          value: totalPowerMW, 
+          unit: "MW", 
+          tooltip: `Realistic sour gas turbine output at 30% efficiency` },
 
-        { code: "BASE_INVEST", label: "Base Investment", color: "rose", value: formatCAD(BASE_INVEST_CAD), unit: "CAD", tooltip: `Conservative C$12.5M (ASICS + turbines + infrastructure)` },
+        { code: "BASE_INVEST", label: "Base Investment", color: "rose", 
+          value: formatCAD(BASE_INVEST_CAD), 
+          unit: "CAD", 
+          tooltip: `Conservative C$12.5M (ASICS + turbines + infrastructure)` },
 
-        { code: "FOOTPRINT", label: "Physical Footprint", color: "emerald", value: formatNumber(sqMeters), unit: "m²", tooltip: `Space for 1,008 M70S+ miners (~0.12 m² each)` },
+        { code: "FOOTPRINT", label: "Physical Footprint", color: "emerald", 
+          value: formatNumber(sqMeters), 
+          unit: "m²", 
+          tooltip: `Space for 973 M70S+ miners (~0.12 m² each)` },
 
-        { code: "BTC_8MONTH", label: "BTC Price for 8 Month Payback", color: "amber", value: formatNumber(btcFor8Month), unit: "USD", tooltip: `BTC price needed for exactly 8 months payback (Base case, 30 days/month)` },
+        { code: "BTC_8MONTH", label: "BTC Price for 8 Month Payback", color: "amber", 
+          value: formatNumber(btcFor8Month), 
+          unit: "USD", 
+          tooltip: `BTC price needed for exactly 8 months payback (Base case, 30 days/month)` },
 
-        { code: "PAYBACK", label: "Payback Period", color: "lime", value: baseNow.paybackMonths, unit: "Base Case (months)", tooltip: `Bitbo Power Law (Zero Day 2011-01-05, exponent 5.8)\nBase case only • Switches to post-halving after 24 months if needed\n~250k in Sep 2027` }
+        { code: "PAYBACK", label: "Payback Period", color: "lime", 
+          value: baseNow.paybackMonths, 
+          unit: "Base Case (months)", 
+          tooltip: `Bitbo Power Law (Zero Day 2011-01-05, exponent 5.8)\nBase case only • Switches to post-halving after 24 months if needed\n~250k in Sep 2027` }
       ];
 
       const container = document.getElementById("cards");
