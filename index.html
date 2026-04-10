@@ -46,8 +46,10 @@
 
   <div class="max-w-6xl mx-auto px-4 sm:px-6 py-8">
     <div class="text-center text-gray-500 text-xs mb-2">
-      Version 2026-04-10 • 5.7% Monthly BTC Growth (Fixed)
+      Version 2026-04-10 • Live BTC + 5.7% Monthly Growth
     </div>
+
+    <div id="last-updated" class="text-center text-gray-500 text-xs mb-6"></div>
 
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-6" id="cards"></div>
   </div>
@@ -67,6 +69,20 @@
 
     const SQM_PER_MINER = 0.12;
     const BASE_SATS_PER_TH = 45;
+
+    async function fetchLivePrices() {
+      console.log("=== Fetching live prices ===");
+      try {
+        const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
+        const data = await res.json();
+        if (data.bitcoin && data.bitcoin.usd) {
+          btcPrice = Math.round(data.bitcoin.usd);
+          console.log(`✅ BTC updated to: $${btcPrice}`);
+        }
+      } catch (e) {
+        console.warn("BTC fetch failed, using fallback");
+      }
+    }
 
     function calculateAllMetrics() {
       const gjPerDay = GAS_VOLUME_M3_PER_DAY * (GJ_PER_E3M3 / 1000);
@@ -91,15 +107,13 @@
       const m = calculateAllMetrics();
       let totalDailySats = m.totalDailySats;
 
-      // Simple iterative payback with monthly growth
       let cumulativeCAD = 0;
       let months = 0;
-      const dailySats = totalDailySats;
 
       while (cumulativeCAD < BASE_INVEST_CAD && months < 120) {
         months += 1;
         const projectedBTC = getMonthlyGrowthBtcPrice(months);
-        const dailyRevUSD = (dailySats / 100000000) * projectedBTC;
+        const dailyRevUSD = (totalDailySats / 100000000) * projectedBTC;
         const dailyRevCAD = dailyRevUSD * 1.39;
         const monthlyRevCAD = dailyRevCAD * 30.437;
         cumulativeCAD += monthlyRevCAD;
@@ -164,12 +178,15 @@
         `;
         container.appendChild(card);
       });
+
+      document.getElementById("last-updated").textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
     }
 
-    function updateDashboard() {
+    async function updateDashboard() {
+      await fetchLivePrices();
       createWidgets();
       const m = calculateAllMetrics();
-      console.log(`✅ Dashboard updated → Daily Sats: ${m.totalDailySats} | Mining Revenue: ${m.satsPerGJ} | Miners: ${m.minersSupported}`);
+      console.log(`✅ Dashboard updated → BTC: $${btcPrice} | Daily Sats: ${m.totalDailySats} | Mining Revenue: ${m.satsPerGJ} | Miners: ${m.minersSupported}`);
     }
 
     function init() {
@@ -177,7 +194,7 @@
     }
 
     init();
-    setInterval(updateDashboard, 300000);
+    setInterval(updateDashboard, 300000); // every 5 minutes
   </script>
 </body>
 </html>
