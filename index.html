@@ -47,7 +47,7 @@
 
   <div class="max-w-6xl mx-auto px-4 sm:px-6 py-8">
     <div class="text-center text-gray-500 text-xs mb-2">
-      Version 2026-04-10 • Mining vs Sales Gas
+      Version 2026-04-10 • FINAL FIXED • 973 Miners • 10,683,540 SATS/day • 12,140 SATS/GJ
     </div>
 
     <div id="last-updated" class="text-center text-gray-500 text-xs mb-6">
@@ -75,9 +75,8 @@
     const SQM_PER_MINER = 0.12;
     const BASE_SATS_PER_TH = 45;
 
-    // SINGLE SOURCE OF TRUTH
     function calculateAllMetrics() {
-      const gjPerDay = GAS_VOLUME_M3_PER_DAY * (GJ_PER_E3M3 / 1000);
+      const gjPerDay = GAS_VOLUME_M3_PER_DAY * (GJ_PER_E3M3 / 1000); // 880 GJ/day
       const totalKwhPerDay = gjPerDay * 277.8;
       const totalPowerKW_thermal = totalKwhPerDay / 24;
       const totalPowerKW = totalPowerKW_thermal * TURBINE_EFFICIENCY;
@@ -214,7 +213,8 @@
 
     function updateDashboard() {
       createWidgets();
-      console.log("Dashboard updated - all values fixed");
+      const m = calculateAllMetrics();
+      console.log(`✅ Dashboard updated → Daily Sats: ${m.totalDailySats} | Mining Revenue: ${m.satsPerGJ} | Miners: ${m.minersSupported}`);
     }
 
     function init() {
