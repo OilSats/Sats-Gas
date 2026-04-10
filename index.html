@@ -58,9 +58,12 @@
   </div>
 
   <script>
-    let btcPrice = 71889;               // Live spot price — Zero Day is today
+    let btcPrice = 71889;               // Live spot price (fits the Power Law today)
     let wtiPrice = 96.78;
     let aecoPrice = 1.78;
+
+    const ZERO_DAY = new Date("2011-01-05").getTime();
+    const POWER_LAW_EXPONENT = 5.8;
 
     const GAS_VOLUME_M3_PER_DAY = 20000;
     const M70S_HASHRATE = 244;
@@ -73,8 +76,6 @@
     const BEAR_SATS_PER_TH = 35;
     const BASE_SATS_PER_TH = 45;
     const BULL_SATS_PER_TH = 55;
-
-    const POWER_LAW_EXPONENT = 5.8;
 
     async function fetchLivePrices() {
       console.log("=== Fetching live prices ===");
@@ -130,14 +131,18 @@
       return Math.round(dailySats / gjPerDay);
     }
 
-    // Conservative Power Law BTC price projection (aligned with Bitbo ~$250k in Sep 2027)
+    // Power Law BTC price for N months from today (Zero Day = 2011-01-05, today's price fits the curve)
     function getPowerLawBtcPrice(monthsFromNow) {
       if (monthsFromNow <= 0) return btcPrice;
-      // Gentle growth factor to match Bitbo trajectory (~$250k in ~17 months)
-      const monthsTo250k = 17; // Sep 2027
-      const targetRatio = 250000 / btcPrice;
-      const growthFactor = Math.pow(targetRatio, monthsFromNow / monthsTo250k);
-      return Math.round(btcPrice * growthFactor);
+
+      const now = new Date().getTime();
+      const currentDays = (now - ZERO_DAY) / (1000 * 60 * 60 * 24);
+
+      const futureDate = new Date(now + monthsFromNow * 30.437 * 24 * 60 * 60 * 1000);
+      const futureDays = (futureDate.getTime() - ZERO_DAY) / (1000 * 60 * 60 * 24);
+
+      const ratio = futureDays / currentDays;
+      return Math.round(btcPrice * Math.pow(ratio, POWER_LAW_EXPONENT));
     }
 
     function getSetupMetrics(scenario) {
@@ -158,7 +163,7 @@
         totalDailySats = minersSupported * dailySatsPerMiner;
       }
 
-      // Use Power Law scaled BTC price
+      // Project BTC price with Power Law over the payback period
       const projectedBtcPrice = getPowerLawBtcPrice(paybackMonths);
       dailyRevUSD = (totalDailySats / 100000000) * projectedBtcPrice;
       paybackMonths = (BASE_INVEST_CAD / (dailyRevUSD * 1.39)) / 30;
@@ -230,7 +235,7 @@
         { code: "PAYBACK", label: "Payback Period", color: "lime", 
           value: `${bearNow.paybackMonths}<br>${baseNow.paybackMonths}<br>${bullNow.paybackMonths}`, 
           unit: "Bear<br>Base<br>Bull (months)", 
-          tooltip: `Bitcoin Long-Term Power Law (Bitbo Linear Regression Fit, Zero Day 2011-01-05):\nPrice grows as ~t^5.8 (R² ≈ 0.955)\n• Bear: pre-halving sats up to 24 months, then switches to post-halving if longer\n• BTC price scales with Power Law over the payback period (~$250k in Sep 2027)\nZero Day = today (live BTC price)` }
+          tooltip: `Bitcoin Long-Term Power Law (Bitbo Linear Regression Fit, Zero Day 2011-01-05):\nPrice grows as ~t^5.8 (R² ≈ 0.955)\n• Bear: pre-halving sats up to 24 months, then switches to post-halving if longer\n• BTC price scales with Power Law over the payback period (~$250k in Sep 2027)\nZero Day = 2011-01-05` }
       ];
 
       const container = document.getElementById("cards");
