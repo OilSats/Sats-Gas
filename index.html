@@ -62,6 +62,9 @@
     let wtiPrice = 96.78;
     let aecoPrice = 1.78;
 
+    const ZERO_DAY = new Date("2011-01-05").getTime();
+    const POWER_LAW_EXPONENT = 5.8;
+
     const GAS_VOLUME_M3_PER_DAY = 20000;
     const M70S_HASHRATE = 244;
     const M70S_POWER_KW = 3.14;
@@ -114,7 +117,6 @@
         totalDailySats = m.minersSupported * postSatsPerMiner;
       }
 
-      // Use 30% CAGR for BTC price projection
       const projectedBtcPrice = getCagrBtcPrice(paybackMonths);
       const finalDailyRevUSD = (totalDailySats / 100000000) * projectedBtcPrice;
       paybackMonths = (BASE_INVEST_CAD / (finalDailyRevUSD * 1.39)) / 30;
@@ -149,7 +151,7 @@
       const btcFor8Month = calculateBtcPriceFor8MonthPayback();
 
       const items = [
-        { code: "WTI", label: "WTI", color: "emerald", value: formatNumber(Math.round((wtiPrice / btcPrice) * 1e8)), unit: "SATS / bbl", tooltip: `WTI: $${wtiPrice.toFixed(2)} / bbl (last daily open)` },
+        { code: "WTI", label: "WTI", color: "emerald", value: formatNumber(Math.round((wtiPrice / btcPrice) * 1e8)), unit: "SATS / bbl", tooltip: `WTI: $${wtiPrice.toFixed(2)} / bbl\nLive BTC: $${btcPrice.toLocaleString()} / BTC` },
         { code: "AECO", label: "AECO Alberta", color: "amber", value: formatNumber(satsPerGJ_AECO()), unit: "SATS / GJ", tooltip: `AECO: C$${aecoPrice.toFixed(2)} / GJ (last daily open)` },
 
         { code: "MINING", label: "M70S+ Mining Revenue", color: "sky", 
