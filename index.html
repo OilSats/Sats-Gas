@@ -46,7 +46,7 @@
 
   <div class="max-w-6xl mx-auto px-4 sm:px-6 py-8">
     <div class="text-center text-gray-500 text-xs mb-2">
-      Version 2026-04-10 • Live BTC + Daily WTI Open
+      Version 2026-04-10 • Live BTC + OilPriceAPI
     </div>
 
     <div id="last-updated" class="text-center text-gray-500 text-xs mb-6"></div>
@@ -56,7 +56,7 @@
 
   <script>
     let btcPrice = 71889;
-    let wtiPrice = 98.23;     // ← Today's WTI Open (update this line every morning)
+    let wtiPrice = 98.23;
     let aecoPrice = 1.78;
 
     const GAS_VOLUME_M3_PER_DAY = 20000;
@@ -70,17 +70,44 @@
     const SQM_PER_MINER = 0.12;
     const BASE_SATS_PER_TH = 45;
 
+    const OILPRICE_API_KEY = "73ed5b5c00864cffaa2cb8233760c7293487d624522af084fddb958fa1a2183a";
+
     async function fetchLivePrices() {
-      console.log("=== Fetching live BTC ===");
+      console.log("=== Fetching live prices ===");
+
+      // Live BTC
       try {
-        const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
-        const data = await res.json();
-        if (data.bitcoin && data.bitcoin.usd) {
-          btcPrice = Math.round(data.bitcoin.usd);
+        const btcRes = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
+        const btcData = await btcRes.json();
+        if (btcData.bitcoin?.usd) {
+          btcPrice = Math.round(btcData.bitcoin.usd);
           console.log(`✅ BTC updated to: $${btcPrice}`);
         }
+      } catch (e) { console.warn("BTC fetch failed"); }
+
+      // WTI + AECO via OilPriceAPI with proxy
+      const proxy = "https://corsproxy.io/?";
+      const headers = { 'Authorization': `Token ${OILPRICE_API_KEY}` };
+
+      try {
+        const [wtiRes, aecoRes] = await Promise.all([
+          fetch(proxy + encodeURIComponent(`https://api.oilpriceapi.com/v1/prices/latest?by_code=WTI_USD`), { headers }),
+          fetch(proxy + encodeURIComponent(`https://api.oilpriceapi.com/v1/prices/latest?by_code=AECO`), { headers })
+        ]);
+
+        const wtiData = await wtiRes.json();
+        const aecoData = await aecoRes.json();
+
+        if (wtiData.data?.price) {
+          wtiPrice = parseFloat(wtiData.data.price);
+          console.log(`✅ WTI updated to: $${wtiPrice.toFixed(2)}`);
+        }
+        if (aecoData.data?.price) {
+          aecoPrice = parseFloat(aecoData.data.price);
+          console.log(`✅ AECO updated to: C$${aecoPrice.toFixed(2)}`);
+        }
       } catch (e) {
-        console.warn("BTC fetch failed, using fallback");
+        console.warn("OilPriceAPI fetch failed — using fallback values");
       }
     }
 
@@ -144,8 +171,8 @@
       const btcFor8Month = calculateBtcPriceFor8MonthPayback();
 
       const items = [
-        { code: "WTI", label: "WTI", color: "emerald", value: formatNumber(Math.round((wtiPrice / btcPrice) * 1e8)), unit: "SATS / bbl", tooltip: `WTI Open: $${wtiPrice.toFixed(2)} / bbl (today's open - update manually each morning)\nLive BTC: $${btcPrice.toLocaleString()}` },
-        { code: "AECO", label: "AECO Alberta", color: "amber", value: formatNumber(satsPerGJ_AECO()), unit: "SATS / GJ", tooltip: `AECO: C$${aecoPrice.toFixed(2)} / GJ (last daily open)` },
+        { code: "WTI", label: "WTI", color: "emerald", value: formatNumber(Math.round((wtiPrice / btcPrice) * 1e8)), unit: "SATS / bbl", tooltip: `WTI: $${wtiPrice.toFixed(2)} (live via OilPriceAPI)\nLive BTC: $${btcPrice.toLocaleString()}` },
+        { code: "AECO", label: "AECO Alberta", color: "amber", value: formatNumber(satsPerGJ_AECO()), unit: "SATS / GJ", tooltip: `AECO: C$${aecoPrice.toFixed(2)} (live via OilPriceAPI)` },
 
         { code: "MINING", label: "M70S+ Mining Revenue", color: "sky", value: formatNumber(miningBase), unit: `<span class="sats-unit">SATS / GJ (Base)</span>`, tooltip: `973 miners × 10,980 sats/miner/day ÷ 880 GJ/day = 12,140 SATS/GJ` },
 
@@ -185,7 +212,7 @@
       await fetchLivePrices();
       createWidgets();
       const m = calculateAllMetrics();
-      console.log(`✅ Dashboard updated → BTC: $${btcPrice} | WTI Open: $${wtiPrice} | Daily Sats: ${m.totalDailySats}`);
+      console.log(`✅ Dashboard updated → BTC: $${btcPrice} | WTI: $${wtiPrice.toFixed(2)} | AECO: C$${aecoPrice.toFixed(2)} | Daily Sats: ${m.totalDailySats}`);
     }
 
     function init() {
