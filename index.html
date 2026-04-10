@@ -47,7 +47,7 @@
 
   <div class="max-w-6xl mx-auto px-4 sm:px-6 py-8">
     <div class="text-center text-gray-500 text-xs mb-2">
-      Version 2026-04-10 • FIXED • 973 Miners • 10,683,540 SATS/day • 12,140 SATS/GJ
+      Version 2026-04-10 • Mining vs Sales Gas
     </div>
 
     <div id="last-updated" class="text-center text-gray-500 text-xs mb-6">
@@ -58,7 +58,7 @@
   </div>
 
   <script>
-    let btcPrice = 71889;
+    let btcPrice = 71889;  // fallback - proxy removed for speed
 
     const ZERO_DAY = new Date("2011-01-05").getTime();
     const POWER_LAW_EXPONENT = 5.8;
@@ -73,7 +73,7 @@
     const SQM_PER_MINER = 0.12;
     const BASE_SATS_PER_TH = 45;
 
-    // SINGLE SOURCE OF TRUTH - all widgets use this
+    // SINGLE SOURCE OF TRUTH
     function calculateAllMetrics() {
       const gjPerDay = GAS_VOLUME_M3_PER_DAY * (GJ_PER_E3M3 / 1000); // 880 GJ/day
       const totalKwhPerDay = gjPerDay * 277.8;
@@ -92,28 +92,6 @@
         totalPowerMW: (totalPowerKW / 1000).toFixed(2),
         sqMeters: Math.round(minersSupported * SQM_PER_MINER)
       };
-    }
-
-    async function fetchLivePrices() {
-      console.log("=== Fetching live prices ===");
-
-      // More reliable CORS proxy
-      const proxyUrl = `https://corsproxy.io/?${encodeURIComponent('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd')}`;
-
-      try {
-        const res = await fetch(proxyUrl);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.bitcoin?.usd) {
-            btcPrice = Math.round(data.bitcoin.usd);
-            console.log("✅ BTC updated to:", btcPrice);
-          }
-        }
-      } catch (e) {
-        console.warn("BTC fetch failed, using fallback $71,889");
-      }
-
-      document.getElementById("last-updated").textContent = `Last updated: ${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
     }
 
     function getPowerLawBtcPrice(monthsFromNow) {
@@ -136,10 +114,9 @@
         paybackMonths = (BASE_INVEST_CAD / (dailyRevUSD * 1.39)) / 30;
       }
 
-      // Simple post-halving switch for Base case if >24 months
       if (paybackMonths > 24) {
-        const postDailySatsPerMiner = Math.round(M70S_HASHRATE * Math.round(BASE_SATS_PER_TH * 0.55));
-        totalDailySats = m.minersSupported * postDailySatsPerMiner;
+        const postSatsPerMiner = Math.round(M70S_HASHRATE * Math.round(BASE_SATS_PER_TH * 0.55));
+        totalDailySats = m.minersSupported * postSatsPerMiner;
       }
 
       const projectedBtcPrice = getPowerLawBtcPrice(paybackMonths);
@@ -234,10 +211,8 @@
     }
 
     async function updateDashboard() {
-      await fetchLivePrices();
       createWidgets();
-      const m = calculateAllMetrics();
-      console.log(`Dashboard updated → BTC: $${btcPrice} | Daily Sats: ${m.totalDailySats} | Mining Revenue: ${m.satsPerGJ} | Miners: ${m.minersSupported}`);
+      console.log("Dashboard updated with fixed values");
     }
 
     async function init() {
