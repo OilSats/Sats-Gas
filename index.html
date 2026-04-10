@@ -58,7 +58,7 @@
   </div>
 
   <script>
-    let btcPrice = 71889;               // Live spot price (fits the Power Law today)
+    let btcPrice = 71889;
     let wtiPrice = 96.78;
     let aecoPrice = 1.78;
 
@@ -73,9 +73,7 @@
 
     const SQM_PER_MINER = 0.12;
 
-    const BEAR_SATS_PER_TH = 35;
-    const BASE_SATS_PER_TH = 45;
-    const BULL_SATS_PER_TH = 55;
+    const BASE_SATS_PER_TH = 45;   // Only Base Case now
 
     async function fetchLivePrices() {
       console.log("=== Fetching live prices ===");
@@ -110,12 +108,8 @@
       return { minersSupported, sqMeters, totalPowerMW };
     }
 
-    function dailySatsMinedPerUnit(scenario, isPostHalving = false) {
-      let base;
-      if (scenario === "bear") base = BEAR_SATS_PER_TH;
-      else if (scenario === "bull") base = BULL_SATS_PER_TH;
-      else base = BASE_SATS_PER_TH;
-
+    function dailySatsMinedPerUnit(isPostHalving = false) {
+      let base = BASE_SATS_PER_TH;
       if (isPostHalving) base = Math.round(base * 0.55);
       return Math.round(M70S_HASHRATE * base);
     }
@@ -124,14 +118,13 @@
       return btcPrice > 0 ? Math.round((aecoPrice / btcPrice) * 100000000) : 0;
     }
 
-    function satsPerGJ_Mining(scenario, isPostHalving = false) {
+    function satsPerGJ_Mining(isPostHalving = false) {
       const dailyKwh = M70S_POWER_KW * 24;
       const gjPerDay = dailyKwh / 277.8;
-      const dailySats = dailySatsMinedPerUnit(scenario, isPostHalving);
+      const dailySats = dailySatsMinedPerUnit(isPostHalving);
       return Math.round(dailySats / gjPerDay);
     }
 
-    // Power Law BTC price for N months from today (Zero Day = 2011-01-05, today's price fits the curve)
     function getPowerLawBtcPrice(monthsFromNow) {
       if (monthsFromNow <= 0) return btcPrice;
 
@@ -145,10 +138,10 @@
       return Math.round(btcPrice * Math.pow(ratio, POWER_LAW_EXPONENT));
     }
 
-    function getSetupMetrics(scenario) {
+    function getSetupMetrics() {
       const { minersSupported } = getGasPoweredMetrics();
       let isPostHalving = false;
-      let dailySatsPerMiner = dailySatsMinedPerUnit(scenario, false);
+      let dailySatsPerMiner = dailySatsMinedPerUnit(false);
 
       let totalDailySats = minersSupported * dailySatsPerMiner;
       let dailyRevUSD = (totalDailySats / 100000000) * btcPrice;
@@ -156,14 +149,13 @@
         ? ((BASE_INVEST_CAD / (dailyRevUSD * 1.39)) / 30) 
         : 999;
 
-      // Bear rule: pre-halving up to 24 months, then switch to post-halving if longer
-      if (scenario === "bear" && paybackMonths > 24) {
+      // If payback > 24 months, switch to post-halving for Base case too
+      if (paybackMonths > 24) {
         isPostHalving = true;
-        dailySatsPerMiner = dailySatsMinedPerUnit("bear", true);
+        dailySatsPerMiner = dailySatsMinedPerUnit(true);
         totalDailySats = minersSupported * dailySatsPerMiner;
       }
 
-      // Project BTC price with Power Law over the payback period
       const projectedBtcPrice = getPowerLawBtcPrice(paybackMonths);
       dailyRevUSD = (totalDailySats / 100000000) * projectedBtcPrice;
       paybackMonths = (BASE_INVEST_CAD / (dailyRevUSD * 1.39)) / 30;
@@ -173,7 +165,7 @@
 
     function calculateBtcPriceFor8MonthPayback() {
       const { minersSupported } = getGasPoweredMetrics();
-      const dailySatsPerMiner = dailySatsMinedPerUnit("base", false);
+      const dailySatsPerMiner = dailySatsMinedPerUnit(false);
       const totalDailySats = minersSupported * dailySatsPerMiner;
 
       const months = 8;
@@ -188,11 +180,8 @@
     function formatCAD(num) { return 'C$' + num.toLocaleString('en-US'); }
 
     function createWidgets() {
-      const bearNow = getSetupMetrics("bear");
-      const baseNow = getSetupMetrics("base");
-      const bullNow = getSetupMetrics("bull");
-
-      const miningBase = satsPerGJ_Mining("base");
+      const baseNow = getSetupMetrics();
+      const miningBase = satsPerGJ_Mining(false);
       const multiplier = (miningBase / satsPerGJ_AECO()).toFixed(1) || "—";
       const btcFor8Month = calculateBtcPriceFor8MonthPayback();
 
@@ -210,10 +199,10 @@
         { code: "MULTIPLIER", label: "Mining Multiplier", color: "violet", value: multiplier, unit: "×", 
           tooltip: `Mining revenue vs selling raw AECO gas\n(Base case only)` },
 
-        { code: "DAILY_NOW", label: "Daily Sats (Now)", color: "cyan", 
-          value: `${formatNumber(bearNow.totalDailySats)}   ${formatNumber(baseNow.totalDailySats)}   ${formatNumber(bullNow.totalDailySats)}`, 
-          unit: `<span class="sats-unit">SATS/day (Bear / Base / Bull)</span>`, 
-          tooltip: `Bear: 35 sats/TH/s/day ($25 USD/PH/s) | Base: 45 sats/TH/s/day (~$32.55 USD/PH/s) | Bull: 55 sats/TH/s/day` },
+        { code: "DAILY_NOW", label: "Daily Sats (Base Case)", color: "cyan", 
+          value: formatNumber(baseNow.totalDailySats), 
+          unit: `<span class="sats-unit">SATS/day</span>`, 
+          tooltip: `Base case only: 45 sats/TH/s/day (~$32.55 USD/PH/s) using M70S+ ASICs` },
 
         { code: "POWER", label: "Power Required", color: "blue", 
           value: totalPowerMW, 
@@ -233,9 +222,9 @@
           tooltip: `BTC price required for exactly 8 months payback using Base Case daily sats (45 sats/TH/s pre-halving)` },
 
         { code: "PAYBACK", label: "Payback Period", color: "lime", 
-          value: `${bearNow.paybackMonths}<br>${baseNow.paybackMonths}<br>${bullNow.paybackMonths}`, 
-          unit: "Bear<br>Base<br>Bull (months)", 
-          tooltip: `Bitcoin Long-Term Power Law (Bitbo Linear Regression Fit, Zero Day 2011-01-05):\nPrice grows as ~t^5.8 (R² ≈ 0.955)\n• Bear: pre-halving sats up to 24 months, then switches to post-halving if longer\n• BTC price scales with Power Law over the payback period (~$250k in Sep 2027)\nZero Day = 2011-01-05` }
+          value: baseNow.paybackMonths, 
+          unit: "Base Case (months)", 
+          tooltip: `Bitcoin Long-Term Power Law (Bitbo Linear Regression Fit, Zero Day 2011-01-05):\nPrice grows as ~t^5.8 (R² ≈ 0.955)\n• Uses Base Case sats/day\n• Switches to post-halving after 24 months if needed\n• BTC price scales with Power Law over the payback period (~$250k in Sep 2027)\nZero Day = 2011-01-05` }
       ];
 
       const container = document.getElementById("cards");
