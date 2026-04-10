@@ -58,7 +58,7 @@
   </div>
 
   <script>
-    let btcPrice = 71889;  // fallback - proxy removed for speed
+    let btcPrice = 71889;   // fallback (no slow proxy)
 
     const ZERO_DAY = new Date("2011-01-05").getTime();
     const POWER_LAW_EXPONENT = 5.8;
@@ -72,18 +72,19 @@
 
     const SQM_PER_MINER = 0.12;
     const BASE_SATS_PER_TH = 45;
+    const aecoPrice = 1.78;   // fixed value
 
     // SINGLE SOURCE OF TRUTH
     function calculateAllMetrics() {
-      const gjPerDay = GAS_VOLUME_M3_PER_DAY * (GJ_PER_E3M3 / 1000); // 880 GJ/day
+      const gjPerDay = GAS_VOLUME_M3_PER_DAY * (GJ_PER_E3M3 / 1000);
       const totalKwhPerDay = gjPerDay * 277.8;
       const totalPowerKW_thermal = totalKwhPerDay / 24;
       const totalPowerKW = totalPowerKW_thermal * TURBINE_EFFICIENCY;
-      const minersSupported = Math.floor(totalPowerKW / M70S_POWER_KW); // 973
+      const minersSupported = Math.floor(totalPowerKW / M70S_POWER_KW);
 
-      const dailySatsPerMiner = Math.round(M70S_HASHRATE * BASE_SATS_PER_TH); // 10,980
-      const totalDailySats = minersSupported * dailySatsPerMiner; // 10,683,540
-      const satsPerGJ = Math.round(totalDailySats / gjPerDay); // 12,140
+      const dailySatsPerMiner = Math.round(M70S_HASHRATE * BASE_SATS_PER_TH);
+      const totalDailySats = minersSupported * dailySatsPerMiner;
+      const satsPerGJ = Math.round(totalDailySats / gjPerDay);
 
       return {
         minersSupported,
@@ -210,13 +211,13 @@
       });
     }
 
-    async function updateDashboard() {
+    function updateDashboard() {
       createWidgets();
       console.log("Dashboard updated with fixed values");
     }
 
-    async function init() {
-      await updateDashboard();
+    function init() {
+      updateDashboard();
     }
 
     init();
