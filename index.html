@@ -47,7 +47,7 @@
 
   <div class="max-w-6xl mx-auto px-4 sm:px-6 py-8">
     <div class="text-center text-gray-500 text-xs mb-2">
-      Version 2026-04-10 • FIXED
+      Version 2026-04-10 • 30% CAGR for Payback
     </div>
 
     <div id="last-updated" class="text-center text-gray-500 text-xs mb-6">
@@ -62,15 +62,13 @@
     let wtiPrice = 96.78;
     let aecoPrice = 1.78;
 
-    const ZERO_DAY = new Date("2011-01-05").getTime();
-    const POWER_LAW_EXPONENT = 5.8;
-
     const GAS_VOLUME_M3_PER_DAY = 20000;
     const M70S_HASHRATE = 244;
     const M70S_POWER_KW = 3.14;
     const BASE_INVEST_CAD = 12500000;
     const GJ_PER_E3M3 = 44;
     const TURBINE_EFFICIENCY = 0.30;
+    const CAGR = 0.30;   // 30% annual growth for BTC price in payback calc
 
     const SQM_PER_MINER = 0.12;
     const BASE_SATS_PER_TH = 45;
@@ -95,14 +93,10 @@
       };
     }
 
-    function getPowerLawBtcPrice(monthsFromNow) {
+    function getCagrBtcPrice(monthsFromNow) {
       if (monthsFromNow <= 0) return btcPrice;
-      const now = new Date().getTime();
-      const currentDays = (now - ZERO_DAY) / (1000 * 60 * 60 * 24);
-      const futureDate = new Date(now + monthsFromNow * 30.437 * 24 * 60 * 60 * 1000);
-      const futureDays = (futureDate.getTime() - ZERO_DAY) / (1000 * 60 * 60 * 24);
-      const ratio = futureDays / currentDays;
-      return Math.round(btcPrice * Math.pow(ratio, POWER_LAW_EXPONENT));
+      const years = monthsFromNow / 12;
+      return Math.round(btcPrice * Math.pow(1 + CAGR, years));
     }
 
     function getSetupMetrics() {
@@ -120,7 +114,8 @@
         totalDailySats = m.minersSupported * postSatsPerMiner;
       }
 
-      const projectedBtcPrice = getPowerLawBtcPrice(paybackMonths);
+      // Use 30% CAGR for BTC price projection
+      const projectedBtcPrice = getCagrBtcPrice(paybackMonths);
       const finalDailyRevUSD = (totalDailySats / 100000000) * projectedBtcPrice;
       paybackMonths = (BASE_INVEST_CAD / (finalDailyRevUSD * 1.39)) / 30;
 
@@ -166,7 +161,7 @@
           tooltip: `Mining revenue vs selling raw AECO gas (Base case)` },
 
         { code: "DAILY_NOW", label: "Daily Sats (Base Case)", color: "cyan", 
-          value: formatNumber(m.totalDailySats), 
+          value: formatNumber(baseNow.totalDailySats), 
           unit: `<span class="sats-unit">SATS/day</span>`, 
           tooltip: `973 M70S+ miners × 10,980 sats/miner/day = 10,683,540 SATS/day` },
 
@@ -193,7 +188,7 @@
         { code: "PAYBACK", label: "Payback Period", color: "lime", 
           value: baseNow.paybackMonths, 
           unit: "Base Case (months)", 
-          tooltip: `Bitbo Power Law (Zero Day 2011-01-05, exponent 5.8)\nBase case only • Switches to post-halving after 24 months if needed\n~250k in Sep 2027` }
+          tooltip: `30% CAGR on BTC price (compounded annually from live price)\nBase case only • Switches to post-halving after 24 months if needed` }
       ];
 
       const container = document.getElementById("cards");
