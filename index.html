@@ -40,18 +40,13 @@
 
     .sats-unit { color: #f97316; font-weight: 500; }
     .cad-unit  { color: #f87171; font-weight: 500; }
-    .footprint-unit { color: #4ade80; font-weight: 500; }
   </style>
 </head>
 <body class="bg-[#0a0a0a] text-white min-h-screen">
 
   <div class="max-w-6xl mx-auto px-4 sm:px-6 py-8">
     <div class="text-center text-gray-500 text-xs mb-2">
-      Version 2026-04-10 • 5.7% Monthly BTC Growth
-    </div>
-
-    <div id="last-updated" class="text-center text-gray-500 text-xs mb-6">
-      Last updated: never
+      Version 2026-04-10 • 5.7% Monthly BTC Growth (Fixed)
     </div>
 
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-6" id="cards"></div>
@@ -84,52 +79,41 @@
       const totalDailySats = minersSupported * dailySatsPerMiner;
       const satsPerGJ = Math.round(totalDailySats / gjPerDay);
 
-      return {
-        minersSupported,
-        totalDailySats,
-        satsPerGJ,
-        totalPowerMW: (totalPowerKW / 1000).toFixed(2),
-        sqMeters: Math.round(minersSupported * SQM_PER_MINER)
-      };
+      return { minersSupported, totalDailySats, satsPerGJ, totalPowerMW: (totalPowerKW / 1000).toFixed(2), sqMeters: Math.round(minersSupported * SQM_PER_MINER) };
     }
 
-    function getMonthlyGrowthBtcPrice(monthsFromNow) {
-      if (monthsFromNow <= 0) return btcPrice;
-      return Math.round(btcPrice * Math.pow(1 + MONTHLY_BTC_GROWTH, monthsFromNow));
+    function getMonthlyGrowthBtcPrice(months) {
+      if (months <= 0) return btcPrice;
+      return Math.round(btcPrice * Math.pow(1 + MONTHLY_BTC_GROWTH, months));
     }
 
     function getSetupMetrics() {
       const m = calculateAllMetrics();
       let totalDailySats = m.totalDailySats;
-      let paybackMonths = 999;
 
-      const dailyRevUSD = (totalDailySats / 100000000) * btcPrice;
-      if (dailyRevUSD > 0) {
-        paybackMonths = (BASE_INVEST_CAD / (dailyRevUSD * 1.39)) / 30;
+      // Simple iterative payback with monthly growth
+      let cumulativeCAD = 0;
+      let months = 0;
+      const dailySats = totalDailySats;
+
+      while (cumulativeCAD < BASE_INVEST_CAD && months < 120) {
+        months += 1;
+        const projectedBTC = getMonthlyGrowthBtcPrice(months);
+        const dailyRevUSD = (dailySats / 100000000) * projectedBTC;
+        const dailyRevCAD = dailyRevUSD * 1.39;
+        const monthlyRevCAD = dailyRevCAD * 30.437;
+        cumulativeCAD += monthlyRevCAD;
       }
 
-      if (paybackMonths > 24) {
-        const postSatsPerMiner = Math.round(M70S_HASHRATE * Math.round(BASE_SATS_PER_TH * 0.55));
-        totalDailySats = m.minersSupported * postSatsPerMiner;
-      }
-
-      const projectedBtcPrice = getMonthlyGrowthBtcPrice(Math.floor(paybackMonths));
-      const finalDailyRevUSD = (totalDailySats / 100000000) * projectedBtcPrice;
-      paybackMonths = (BASE_INVEST_CAD / (finalDailyRevUSD * 1.39)) / 30;
-
-      return { totalDailySats: Math.round(totalDailySats), paybackMonths: paybackMonths.toFixed(1) };
+      return { totalDailySats: Math.round(totalDailySats), paybackMonths: months.toFixed(1) };
     }
 
     function calculateBtcPriceFor8MonthPayback() {
       const m = calculateAllMetrics();
       const totalDailySats = m.totalDailySats;
-
-      const months = 8;
-      const requiredDailyRevCAD = BASE_INVEST_CAD / months;
+      const requiredDailyRevCAD = BASE_INVEST_CAD / 8;
       const requiredDailyRevUSD = (requiredDailyRevCAD / 1.39) / 30;
-
-      const requiredBtcPrice = (requiredDailyRevUSD * 100000000) / totalDailySats;
-      return Math.round(requiredBtcPrice);
+      return Math.round((requiredDailyRevUSD * 100000000) / totalDailySats);
     }
 
     function satsPerGJ_AECO() {
@@ -150,43 +134,21 @@
         { code: "WTI", label: "WTI", color: "emerald", value: formatNumber(Math.round((wtiPrice / btcPrice) * 1e8)), unit: "SATS / bbl", tooltip: `WTI: $${wtiPrice.toFixed(2)} / bbl\nLive BTC: $${btcPrice.toLocaleString()}` },
         { code: "AECO", label: "AECO Alberta", color: "amber", value: formatNumber(satsPerGJ_AECO()), unit: "SATS / GJ", tooltip: `AECO: C$${aecoPrice.toFixed(2)} / GJ (last daily open)` },
 
-        { code: "MINING", label: "M70S+ Mining Revenue", color: "sky", 
-          value: formatNumber(miningBase), 
-          unit: `<span class="sats-unit">SATS / GJ (Base)</span>`, 
-          tooltip: `973 miners × 10,980 sats/miner/day ÷ 880 GJ/day = 12,140 SATS/GJ` },
+        { code: "MINING", label: "M70S+ Mining Revenue", color: "sky", value: formatNumber(miningBase), unit: `<span class="sats-unit">SATS / GJ (Base)</span>`, tooltip: `973 miners × 10,980 sats/miner/day ÷ 880 GJ/day = 12,140 SATS/GJ` },
 
-        { code: "MULTIPLIER", label: "Mining Multiplier", color: "violet", value: multiplier, unit: "×", 
-          tooltip: `Mining revenue vs selling raw AECO gas (Base case)` },
+        { code: "MULTIPLIER", label: "Mining Multiplier", color: "violet", value: multiplier, unit: "×", tooltip: `Mining revenue vs selling raw AECO gas (Base case)` },
 
-        { code: "DAILY_NOW", label: "Daily Sats (Base Case)", color: "cyan", 
-          value: formatNumber(m.totalDailySats), 
-          unit: `<span class="sats-unit">SATS/day</span>`, 
-          tooltip: `973 M70S+ miners × 10,980 sats/miner/day = 10,683,540 SATS/day` },
+        { code: "DAILY_NOW", label: "Daily Sats (Base Case)", color: "cyan", value: formatNumber(m.totalDailySats), unit: `<span class="sats-unit">SATS/day</span>`, tooltip: `973 M70S+ miners × 10,980 sats/miner/day = 10,683,540 SATS/day` },
 
-        { code: "POWER", label: "Power Required", color: "blue", 
-          value: m.totalPowerMW, 
-          unit: "MW", 
-          tooltip: `Realistic sour gas turbine output at 30% efficiency` },
+        { code: "POWER", label: "Power Required", color: "blue", value: m.totalPowerMW, unit: "MW", tooltip: `Realistic sour gas turbine output at 30% efficiency` },
 
-        { code: "BASE_INVEST", label: "Base Investment", color: "rose", 
-          value: formatCAD(BASE_INVEST_CAD), 
-          unit: "CAD", 
-          tooltip: `Conservative C$12.5M (ASICS + turbines + infrastructure)` },
+        { code: "BASE_INVEST", label: "Base Investment", color: "rose", value: formatCAD(BASE_INVEST_CAD), unit: "CAD", tooltip: `Conservative C$12.5M (ASICS + turbines + infrastructure)` },
 
-        { code: "FOOTPRINT", label: "Physical Footprint", color: "emerald", 
-          value: formatNumber(m.sqMeters), 
-          unit: "m²", 
-          tooltip: `Space for 973 M70S+ miners (~0.12 m² each)` },
+        { code: "FOOTPRINT", label: "Physical Footprint", color: "emerald", value: formatNumber(m.sqMeters), unit: "m²", tooltip: `Space for 973 M70S+ miners (~0.12 m² each)` },
 
-        { code: "BTC_8MONTH", label: "BTC Price for 8 Month Payback", color: "amber", 
-          value: formatNumber(btcFor8Month), 
-          unit: "USD", 
-          tooltip: `BTC price needed for exactly 8 months payback (Base case, 30 days/month)` },
+        { code: "BTC_8MONTH", label: "BTC Price for 8 Month Payback", color: "amber", value: formatNumber(btcFor8Month), unit: "USD", tooltip: `BTC price needed for exactly 8 months payback (Base case)` },
 
-        { code: "PAYBACK", label: "Payback Period", color: "lime", 
-          value: baseNow.paybackMonths, 
-          unit: "Base Case (months)", 
-          tooltip: `5.7% monthly BTC price increase (compounded from live price)\nBase case only • Switches to post-halving after 24 months if needed` }
+        { code: "PAYBACK", label: "Payback Period", color: "lime", value: baseNow.paybackMonths, unit: "Base Case (months)", tooltip: `5.7% monthly BTC price increase (compounded from live price)\nBase case only • Switches to post-halving after 24 months if needed` }
       ];
 
       const container = document.getElementById("cards");
