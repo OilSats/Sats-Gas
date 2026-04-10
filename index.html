@@ -47,7 +47,7 @@
 
   <div class="max-w-6xl mx-auto px-4 sm:px-6 py-8">
     <div class="text-center text-gray-500 text-xs mb-2">
-      Version 2026-04-10 • Fixed • 973 Miners • 10,683,540 SATS/day • 12,140 SATS/GJ
+      Version 2026-04-10 • FIXED • 973 Miners • 10,683,540 SATS/day • 12,140 SATS/GJ
     </div>
 
     <div id="last-updated" class="text-center text-gray-500 text-xs mb-6">
@@ -59,8 +59,6 @@
 
   <script>
     let btcPrice = 71889;
-    let wtiPrice = 96.78;
-    let aecoPrice = 1.78;
 
     const ZERO_DAY = new Date("2011-01-05").getTime();
     const POWER_LAW_EXPONENT = 5.8;
@@ -75,45 +73,44 @@
     const SQM_PER_MINER = 0.12;
     const BASE_SATS_PER_TH = 45;
 
-    // Central calculation - everything uses this
+    // SINGLE SOURCE OF TRUTH - all widgets use this
     function calculateAllMetrics() {
-      const gjPerDay = GAS_VOLUME_M3_PER_DAY * (GJ_PER_E3M3 / 1000);
+      const gjPerDay = GAS_VOLUME_M3_PER_DAY * (GJ_PER_E3M3 / 1000); // 880 GJ/day
       const totalKwhPerDay = gjPerDay * 277.8;
       const totalPowerKW_thermal = totalKwhPerDay / 24;
       const totalPowerKW = totalPowerKW_thermal * TURBINE_EFFICIENCY;
-      const minersSupported = Math.floor(totalPowerKW / M70S_POWER_KW);
+      const minersSupported = Math.floor(totalPowerKW / M70S_POWER_KW); // 973
 
-      const dailySatsPerMiner = Math.round(M70S_HASHRATE * BASE_SATS_PER_TH);
-      const totalDailySats = minersSupported * dailySatsPerMiner;
-      const satsPerGJ = Math.round(totalDailySats / gjPerDay);
+      const dailySatsPerMiner = Math.round(M70S_HASHRATE * BASE_SATS_PER_TH); // 10,980
+      const totalDailySats = minersSupported * dailySatsPerMiner; // 10,683,540
+      const satsPerGJ = Math.round(totalDailySats / gjPerDay); // 12,140
 
       return {
         minersSupported,
         totalDailySats,
         satsPerGJ,
         totalPowerMW: (totalPowerKW / 1000).toFixed(2),
-        sqMeters: Math.round(minersSupported * SQM_PER_MINER),
-        gjPerDay
+        sqMeters: Math.round(minersSupported * SQM_PER_MINER)
       };
     }
 
     async function fetchLivePrices() {
       console.log("=== Fetching live prices ===");
-      const proxy = "https://api.allorigins.win/get?url=";
-      const coingeckoUrl = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd";
+
+      // More reliable CORS proxy
+      const proxyUrl = `https://corsproxy.io/?${encodeURIComponent('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd')}`;
 
       try {
-        const res = await fetch(proxy + encodeURIComponent(coingeckoUrl));
+        const res = await fetch(proxyUrl);
         if (res.ok) {
           const data = await res.json();
-          const parsed = JSON.parse(data.contents);
-          if (parsed.bitcoin?.usd) {
-            btcPrice = Math.round(parsed.bitcoin.usd);
+          if (data.bitcoin?.usd) {
+            btcPrice = Math.round(data.bitcoin.usd);
             console.log("✅ BTC updated to:", btcPrice);
           }
         }
       } catch (e) {
-        console.warn("BTC fetch failed, using fallback");
+        console.warn("BTC fetch failed, using fallback $71,889");
       }
 
       document.getElementById("last-updated").textContent = `Last updated: ${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
@@ -131,31 +128,30 @@
 
     function getSetupMetrics() {
       const m = calculateAllMetrics();
-      let isPostHalving = false;
-      let dailySatsPerMiner = Math.round(M70S_HASHRATE * BASE_SATS_PER_TH);
+      let totalDailySats = m.totalDailySats;
+      let paybackMonths = 999;
 
-      let totalDailySats = m.minersSupported * dailySatsPerMiner;
-      let dailyRevUSD = (totalDailySats / 100000000) * btcPrice;
-      let paybackMonths = dailyRevUSD > 0 
-        ? ((BASE_INVEST_CAD / (dailyRevUSD * 1.39)) / 30) 
-        : 999;
+      const dailyRevUSD = (totalDailySats / 100000000) * btcPrice;
+      if (dailyRevUSD > 0) {
+        paybackMonths = (BASE_INVEST_CAD / (dailyRevUSD * 1.39)) / 30;
+      }
 
+      // Simple post-halving switch for Base case if >24 months
       if (paybackMonths > 24) {
-        isPostHalving = true;
-        dailySatsPerMiner = Math.round(M70S_HASHRATE * Math.round(BASE_SATS_PER_TH * 0.55));
-        totalDailySats = m.minersSupported * dailySatsPerMiner;
+        const postDailySatsPerMiner = Math.round(M70S_HASHRATE * Math.round(BASE_SATS_PER_TH * 0.55));
+        totalDailySats = m.minersSupported * postDailySatsPerMiner;
       }
 
       const projectedBtcPrice = getPowerLawBtcPrice(paybackMonths);
-      dailyRevUSD = (totalDailySats / 100000000) * projectedBtcPrice;
-      paybackMonths = (BASE_INVEST_CAD / (dailyRevUSD * 1.39)) / 30;
+      const finalDailyRevUSD = (totalDailySats / 100000000) * projectedBtcPrice;
+      paybackMonths = (BASE_INVEST_CAD / (finalDailyRevUSD * 1.39)) / 30;
 
       return { totalDailySats: Math.round(totalDailySats), paybackMonths: paybackMonths.toFixed(1) };
     }
 
     function calculateBtcPriceFor8MonthPayback() {
       const m = calculateAllMetrics();
-      const totalDailySats = m.minersSupported * Math.round(M70S_HASHRATE * BASE_SATS_PER_TH);
+      const totalDailySats = m.totalDailySats;
 
       const months = 8;
       const requiredDailyRevCAD = BASE_INVEST_CAD / months;
@@ -163,6 +159,10 @@
 
       const requiredBtcPrice = (requiredDailyRevUSD * 100000000) / totalDailySats;
       return Math.round(requiredBtcPrice);
+    }
+
+    function satsPerGJ_AECO() {
+      return btcPrice > 0 ? Math.round((aecoPrice / btcPrice) * 100000000) : 0;
     }
 
     function formatNumber(num) { return (num || 0).toLocaleString('en-US'); }
@@ -233,14 +233,11 @@
       });
     }
 
-    function satsPerGJ_AECO() {
-      return btcPrice > 0 ? Math.round((aecoPrice / btcPrice) * 100000000) : 0;
-    }
-
     async function updateDashboard() {
       await fetchLivePrices();
       createWidgets();
-      console.log(`Dashboard updated → BTC: $${btcPrice} | Daily Sats: ${getSetupMetrics().totalDailySats} | Mining Revenue: ${calculateAllMetrics().satsPerGJ}`);
+      const m = calculateAllMetrics();
+      console.log(`Dashboard updated → BTC: $${btcPrice} | Daily Sats: ${m.totalDailySats} | Mining Revenue: ${m.satsPerGJ} | Miners: ${m.minersSupported}`);
     }
 
     async function init() {
