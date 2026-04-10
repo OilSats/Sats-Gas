@@ -47,7 +47,7 @@
 
   <div class="max-w-6xl mx-auto px-4 sm:px-6 py-8">
     <div class="text-center text-gray-500 text-xs mb-2">
-      Version 2026-04-10 • Fixed Math • 973 Miners • 10,683,540 SATS/day
+      Version 2026-04-10 • 973 Miners • 10,683,540 SATS/day • 12,140 SATS/GJ
     </div>
 
     <div id="last-updated" class="text-center text-gray-500 text-xs mb-6">
@@ -76,13 +76,26 @@
     const BASE_SATS_PER_TH = 45;
 
     async function fetchLivePrices() {
+      console.log("=== Fetching live prices ===");
+
+      // Use CORS proxy for CoinGecko
+      const proxy = "https://api.allorigins.win/get?url=";
+      const coingeckoUrl = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd";
+
       try {
-        const res = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd", { cache: "no-store" });
+        const res = await fetch(proxy + encodeURIComponent(coingeckoUrl));
         if (res.ok) {
           const data = await res.json();
-          if (data.bitcoin?.usd) btcPrice = Math.round(data.bitcoin.usd);
+          const parsed = JSON.parse(data.contents);
+          if (parsed.bitcoin?.usd) {
+            btcPrice = Math.round(parsed.bitcoin.usd);
+            console.log("✅ BTC updated to:", btcPrice);
+          }
         }
-      } catch (e) {}
+      } catch (e) {
+        console.warn("BTC fetch failed, using fallback");
+      }
+
       document.getElementById("last-updated").textContent = `Last updated: ${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
     }
 
@@ -107,6 +120,22 @@
       return btcPrice > 0 ? Math.round((aecoPrice / btcPrice) * 100000000) : 0;
     }
 
+    function satsPerGJ_Mining() {
+      const metrics = getGasPoweredMetrics();
+      const totalDailySats = metrics.minersSupported * dailySatsMinedPerUnit(false);
+      return Math.round(totalDailySats / metrics.gjPerDay);
+    }
+
+    function getPowerLawBtcPrice(monthsFromNow) {
+      if (monthsFromNow <= 0) return btcPrice;
+      const now = new Date().getTime();
+      const currentDays = (now - ZERO_DAY) / (1000 * 60 * 60 * 24);
+      const futureDate = new Date(now + monthsFromNow * 30.437 * 24 * 60 * 60 * 1000);
+      const futureDays = (futureDate.getTime() - ZERO_DAY) / (1000 * 60 * 60 * 24);
+      const ratio = futureDays / currentDays;
+      return Math.round(btcPrice * Math.pow(ratio, POWER_LAW_EXPONENT));
+    }
+
     function getSetupMetrics() {
       const metrics = getGasPoweredMetrics();
       let isPostHalving = false;
@@ -129,22 +158,6 @@
       paybackMonths = (BASE_INVEST_CAD / (dailyRevUSD * 1.39)) / 30;
 
       return { totalDailySats: Math.round(totalDailySats), paybackMonths: paybackMonths.toFixed(1) };
-    }
-
-    function satsPerGJ_Mining() {
-      const metrics = getGasPoweredMetrics();
-      const totalDailySats = metrics.minersSupported * dailySatsMinedPerUnit(false);
-      return Math.round(totalDailySats / metrics.gjPerDay);
-    }
-
-    function getPowerLawBtcPrice(monthsFromNow) {
-      if (monthsFromNow <= 0) return btcPrice;
-      const now = new Date().getTime();
-      const currentDays = (now - ZERO_DAY) / (1000 * 60 * 60 * 24);
-      const futureDate = new Date(now + monthsFromNow * 30.437 * 24 * 60 * 60 * 1000);
-      const futureDays = (futureDate.getTime() - ZERO_DAY) / (1000 * 60 * 60 * 24);
-      const ratio = futureDays / currentDays;
-      return Math.round(btcPrice * Math.pow(ratio, POWER_LAW_EXPONENT));
     }
 
     function calculateBtcPriceFor8MonthPayback() {
@@ -231,6 +244,7 @@
     async function updateDashboard() {
       await fetchLivePrices();
       createWidgets();
+      console.log(`Dashboard updated → BTC: $${btcPrice} | Daily Sats: ${getSetupMetrics().totalDailySats} | Mining Revenue: ${satsPerGJ_Mining()}`);
     }
 
     async function init() {
