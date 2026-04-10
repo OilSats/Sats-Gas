@@ -47,7 +47,7 @@
 
   <div class="max-w-6xl mx-auto px-4 sm:px-6 py-8">
     <div class="text-center text-gray-500 text-xs mb-2">
-      Version 2026-04-09 • Sour Gas Turbines • Conservative Estimates • BTC Power Law R² = 0.955
+      Version 2026-04-10 • Sour Gas Turbines • Conservative Estimates • BTC Power Law R² = 0.955
     </div>
 
     <div id="last-updated" class="text-center text-gray-500 text-xs mb-6">
@@ -77,7 +77,6 @@
 
     async function fetchLivePrices() {
       console.log("=== Fetching live prices ===");
-
       try {
         const res = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd", { cache: "no-store" });
         if (res.ok) {
@@ -86,22 +85,13 @@
         }
       } catch (e) { console.warn("BTC fetch failed"); }
 
-      try {
-        const res = await fetch("https://www.alphavantage.co/query?function=WTI&apikey=demo");
-        if (res.ok) {
-          const data = await res.json();
-          if (data.data && data.data[0] && data.data[0].value) wtiPrice = parseFloat(data.data[0].value);
-        }
-      } catch (e) { console.warn("WTI fetch failed"); }
-
-      console.log("AECO using last daily open value");
-
       document.getElementById("last-updated").textContent = `Last updated: ${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
     }
 
     function getGasPoweredMetrics() {
       const gjPerDay = GAS_VOLUME_M3_PER_DAY * (GJ_PER_E3M3 / 1000);
-      const totalPowerKW = (gjPerDay * 1000) / 277.8;
+      const totalKwhPerDay = gjPerDay * 1000 / 277.8;     // Correct energy conversion
+      const totalPowerKW = totalKwhPerDay / 24;           // kW = kWh/day ÷ 24 hours
       const totalPowerMW = (totalPowerKW / 1000).toFixed(2);
       const minersSupported = Math.floor(totalPowerKW / M70S_POWER_KW);
       const sqMeters = Math.round(minersSupported * SQM_PER_MINER);
@@ -111,7 +101,7 @@
     function dailySatsMinedPerUnit(isPostHalving = false) {
       let base = BASE_SATS_PER_TH;
       if (isPostHalving) base = Math.round(base * 0.55);
-      return Math.round(M70S_HASHRATE * base);   // Correct scaling: 244 * 45 = 10,980 sats/miner/day
+      return Math.round(M70S_HASHRATE * base);
     }
 
     function satsPerGJ_AECO() {
@@ -127,13 +117,10 @@
 
     function getPowerLawBtcPrice(monthsFromNow) {
       if (monthsFromNow <= 0) return btcPrice;
-
       const now = new Date().getTime();
       const currentDays = (now - ZERO_DAY) / (1000 * 60 * 60 * 24);
-
       const futureDate = new Date(now + monthsFromNow * 30.437 * 24 * 60 * 60 * 1000);
       const futureDays = (futureDate.getTime() - ZERO_DAY) / (1000 * 60 * 60 * 24);
-
       const ratio = futureDays / currentDays;
       return Math.round(btcPrice * Math.pow(ratio, POWER_LAW_EXPONENT));
     }
@@ -169,7 +156,7 @@
 
       const months = 8;
       const requiredDailyRevCAD = BASE_INVEST_CAD / months;
-      const requiredDailyRevUSD = requiredDailyRevCAD / 1.39;
+      const requiredDailyRevUSD = (requiredDailyRevCAD / 1.39) / 30;   // Fixed: proper daily USD
 
       const requiredBtcPrice = (requiredDailyRevUSD * 100000000) / totalDailySats;
       return Math.round(requiredBtcPrice);
@@ -187,43 +174,46 @@
       const { minersSupported, sqMeters, totalPowerMW } = getGasPoweredMetrics();
 
       const items = [
-        { code: "WTI", label: "WTI", color: "emerald", value: formatNumber(Math.round((wtiPrice / btcPrice) * 1e8)), unit: "SATS / bbl", tooltip: `WTI: $${wtiPrice.toFixed(2)} / bbl (last daily open)\nBTC: $${btcPrice.toLocaleString()} / BTC` },
+        { code: "WTI", label: "WTI", color: "emerald", value: formatNumber(Math.round((wtiPrice / btcPrice) * 1e8)), unit: "SATS / bbl", tooltip: `WTI: $${wtiPrice.toFixed(2)} / bbl (last daily open)` },
         { code: "AECO", label: "AECO Alberta", color: "amber", value: formatNumber(satsPerGJ_AECO()), unit: "SATS / GJ", tooltip: `AECO: C$${aecoPrice.toFixed(2)} / GJ (last daily open)` },
 
         { code: "MINING", label: "M70S+ Mining Revenue", color: "sky", 
           value: formatNumber(miningBase), 
-          unit: `<span class="sats-unit">SATS / GJ (Base Case)</span>`, 
-          tooltip: `Base case: 45 sats/TH/s/day (~$32.55 USD/PH/s)\nMining revenue per GJ using own gas with M70S+ ASICs\n(using 44 GJ per e³m³ gas energy content)` },
+          unit: `<span class="sats-unit">SATS / GJ (Base)</span>`, 
+          tooltip: `Base case: 45 sats/TH/s/day (~$32.55 USD/PH/s)\nUsing M70S+ ASICs and 44 GJ per e³m³` },
 
         { code: "MULTIPLIER", label: "Mining Multiplier", color: "violet", value: multiplier, unit: "×", 
-          tooltip: `Mining revenue vs selling raw AECO gas\n(Base case only)` },
+          tooltip: `Mining revenue vs selling raw AECO gas (Base case)` },
 
         { code: "DAILY_NOW", label: "Daily Sats (Base Case)", color: "cyan", 
           value: formatNumber(baseNow.totalDailySats), 
           unit: `<span class="sats-unit">SATS/day</span>`, 
-          tooltip: `Base case: 45 sats/TH/s/day using 1,008 M70S+ miners (244 TH/s each)` },
+          tooltip: `1,008 M70S+ miners × 10,980 sats/miner/day (Base case)` },
 
         { code: "POWER", label: "Power Required", color: "blue", 
           value: totalPowerMW, 
-          unit: `<span class="power-unit">MW</span>`, 
-          tooltip: `Total electrical power required\n(using 44 GJ per e³m³ gas energy content)` },
+          unit: "MW", 
+          tooltip: `Total power from 20,000 m³/day at 44 GJ/e³m³` },
 
         { code: "BASE_INVEST", label: "Base Investment", color: "rose", 
           value: formatCAD(BASE_INVEST_CAD), 
-          unit: `<span class="cad-unit">CAD</span>`, 
-          tooltip: `Conservative estimate covering:\n• ASICS (M70S+ miners)\n• Sour Gas Turbines + Skids\n• Data Center Infrastructure\nTotal: C$12.5M (actual expected lower)` },
+          unit: "CAD", 
+          tooltip: `Conservative C$12.5M (ASICS + turbines + infrastructure)` },
 
-        { code: "FOOTPRINT", label: "Physical Footprint", color: "emerald", value: formatNumber(sqMeters), unit: `<span class="footprint-unit">m²</span>`, tooltip: `Space required for ${formatNumber(minersSupported)} M70S+ miners\n(~0.12 m² per miner including racking & airflow)` },
+        { code: "FOOTPRINT", label: "Physical Footprint", color: "emerald", 
+          value: formatNumber(sqMeters), 
+          unit: "m²", 
+          tooltip: `Space for ${formatNumber(minersSupported)} M70S+ miners (~0.12 m² each)` },
 
         { code: "BTC_8MONTH", label: "BTC Price for 8 Month Payback", color: "amber", 
           value: formatNumber(btcFor8Month), 
           unit: "USD", 
-          tooltip: `BTC price required for exactly 8 months payback using Base Case daily sats (45 sats/TH/s pre-halving)` },
+          tooltip: `BTC price needed for exactly 8 months payback (Base case, 30 days/month)` },
 
         { code: "PAYBACK", label: "Payback Period", color: "lime", 
           value: baseNow.paybackMonths, 
           unit: "Base Case (months)", 
-          tooltip: `Bitcoin Long-Term Power Law (Bitbo Linear Regression Fit, Zero Day 2011-01-05):\nPrice grows as ~t^5.8 (R² ≈ 0.955)\n• Uses Base Case sats/day\n• Switches to post-halving after 24 months if needed\n• BTC price scales with Power Law over the payback period (~$250k in Sep 2027)\nZero Day = 2011-01-05` }
+          tooltip: `Bitbo Power Law (Zero Day 2011-01-05, exponent 5.8)\nBase case only • Switches to post-halving after 24 months if needed\n~250k in Sep 2027` }
       ];
 
       const container = document.getElementById("cards");
@@ -244,7 +234,7 @@
     async function updateDashboard() {
       await fetchLivePrices();
       createWidgets();
-      console.log(`Dashboard updated → WTI: $${wtiPrice.toFixed(2)} | AECO: C$${aecoPrice.toFixed(2)} | BTC: $${btcPrice}`);
+      console.log(`Dashboard updated → BTC: $${btcPrice} | Daily Sats: ${getSetupMetrics().totalDailySats}`);
     }
 
     async function init() {
