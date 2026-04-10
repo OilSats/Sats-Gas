@@ -47,7 +47,7 @@
 
   <div class="max-w-6xl mx-auto px-4 sm:px-6 py-8">
     <div class="text-center text-gray-500 text-xs mb-2">
-      Version 2026-04-10 • FINAL FIXED • 973 Miners • 10,683,540 SATS/day • 12,140 SATS/GJ
+      Version 2026-04-10 • FINAL FIXED
     </div>
 
     <div id="last-updated" class="text-center text-gray-500 text-xs mb-6">
@@ -75,16 +75,17 @@
     const SQM_PER_MINER = 0.12;
     const BASE_SATS_PER_TH = 45;
 
+    // SINGLE SOURCE OF TRUTH - everything uses this
     function calculateAllMetrics() {
       const gjPerDay = GAS_VOLUME_M3_PER_DAY * (GJ_PER_E3M3 / 1000); // 880 GJ/day
       const totalKwhPerDay = gjPerDay * 277.8;
       const totalPowerKW_thermal = totalKwhPerDay / 24;
       const totalPowerKW = totalPowerKW_thermal * TURBINE_EFFICIENCY;
-      const minersSupported = Math.floor(totalPowerKW / M70S_POWER_KW);
+      const minersSupported = Math.floor(totalPowerKW / M70S_POWER_KW); // 973
 
-      const dailySatsPerMiner = Math.round(M70S_HASHRATE * BASE_SATS_PER_TH);
-      const totalDailySats = minersSupported * dailySatsPerMiner;
-      const satsPerGJ = Math.round(totalDailySats / gjPerDay);
+      const dailySatsPerMiner = Math.round(M70S_HASHRATE * BASE_SATS_PER_TH); // 10,980
+      const totalDailySats = minersSupported * dailySatsPerMiner; // 10,683,540
+      const satsPerGJ = Math.round(totalDailySats / gjPerDay); // 12,140
 
       return {
         minersSupported,
