@@ -113,6 +113,7 @@
         totalDailySats = m.minersSupported * postSatsPerMiner;
       }
 
+      // Use 5.7% monthly BTC price growth
       const projectedBtcPrice = getMonthlyGrowthBtcPrice(Math.floor(paybackMonths));
       const finalDailyRevUSD = (totalDailySats / 100000000) * projectedBtcPrice;
       paybackMonths = (BASE_INVEST_CAD / (finalDailyRevUSD * 1.39)) / 30;
