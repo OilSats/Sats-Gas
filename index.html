@@ -58,7 +58,9 @@
   </div>
 
   <script>
-    let btcPrice = 71889;   // fallback (no slow proxy)
+    let btcPrice = 71889;
+    let wtiPrice = 96.78;
+    let aecoPrice = 1.78;
 
     const ZERO_DAY = new Date("2011-01-05").getTime();
     const POWER_LAW_EXPONENT = 5.8;
@@ -72,7 +74,6 @@
 
     const SQM_PER_MINER = 0.12;
     const BASE_SATS_PER_TH = 45;
-    const aecoPrice = 1.78;   // fixed value
 
     // SINGLE SOURCE OF TRUTH
     function calculateAllMetrics() {
@@ -213,7 +214,7 @@
 
     function updateDashboard() {
       createWidgets();
-      console.log("Dashboard updated with fixed values");
+      console.log("Dashboard updated - all values fixed");
     }
 
     function init() {
