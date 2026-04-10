@@ -73,7 +73,7 @@
 
     const SQM_PER_MINER = 0.12;
 
-    const BASE_SATS_PER_TH = 45;   // Only Base Case now
+    const BASE_SATS_PER_TH = 45;
 
     async function fetchLivePrices() {
       console.log("=== Fetching live prices ===");
@@ -111,7 +111,7 @@
     function dailySatsMinedPerUnit(isPostHalving = false) {
       let base = BASE_SATS_PER_TH;
       if (isPostHalving) base = Math.round(base * 0.55);
-      return Math.round(M70S_HASHRATE * base);
+      return Math.round(M70S_HASHRATE * base);   // Correct scaling: 244 * 45 = 10,980 sats/miner/day
     }
 
     function satsPerGJ_AECO() {
@@ -149,7 +149,6 @@
         ? ((BASE_INVEST_CAD / (dailyRevUSD * 1.39)) / 30) 
         : 999;
 
-      // If payback > 24 months, switch to post-halving for Base case too
       if (paybackMonths > 24) {
         isPostHalving = true;
         dailySatsPerMiner = dailySatsMinedPerUnit(true);
@@ -202,7 +201,7 @@
         { code: "DAILY_NOW", label: "Daily Sats (Base Case)", color: "cyan", 
           value: formatNumber(baseNow.totalDailySats), 
           unit: `<span class="sats-unit">SATS/day</span>`, 
-          tooltip: `Base case only: 45 sats/TH/s/day (~$32.55 USD/PH/s) using M70S+ ASICs` },
+          tooltip: `Base case: 45 sats/TH/s/day using 1,008 M70S+ miners (244 TH/s each)` },
 
         { code: "POWER", label: "Power Required", color: "blue", 
           value: totalPowerMW, 
