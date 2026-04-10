@@ -47,7 +47,7 @@
 
   <div class="max-w-6xl mx-auto px-4 sm:px-6 py-8">
     <div class="text-center text-gray-500 text-xs mb-2">
-      Version 2026-04-10 • FINAL FIXED
+      Version 2026-04-10 • FIXED - Single Calculation
     </div>
 
     <div id="last-updated" class="text-center text-gray-500 text-xs mb-6">
@@ -72,7 +72,6 @@
     const SQM_PER_MINER = 0.12;
     const BASE_SATS_PER_TH = 45;
 
-    // SINGLE SOURCE OF TRUTH
     function calculateAllMetrics() {
       const gjPerDay = GAS_VOLUME_M3_PER_DAY * (GJ_PER_E3M3 / 1000);
       const totalKwhPerDay = gjPerDay * 277.8;
@@ -93,7 +92,49 @@
       };
     }
 
+    function getSetupMetrics() {
+      const m = calculateAllMetrics();
+      let totalDailySats = m.totalDailySats;
+      let paybackMonths = 999;
+
+      const dailyRevUSD = (totalDailySats / 100000000) * btcPrice;
+      if (dailyRevUSD > 0) {
+        paybackMonths = (BASE_INVEST_CAD / (dailyRevUSD * 1.39)) / 30;
+      }
+
+      if (paybackMonths > 24) {
+        const postSatsPerMiner = Math.round(M70S_HASHRATE * Math.round(BASE_SATS_PER_TH * 0.55));
+        totalDailySats = m.minersSupported * postSatsPerMiner;
+      }
+
+      const projectedBtcPrice = btcPrice; // simple for now
+      const finalDailyRevUSD = (totalDailySats / 100000000) * projectedBtcPrice;
+      paybackMonths = (BASE_INVEST_CAD / (finalDailyRevUSD * 1.39)) / 30;
+
+      return { totalDailySats: Math.round(totalDailySats), paybackMonths: paybackMonths.toFixed(1) };
+    }
+
+    function calculateBtcPriceFor8MonthPayback() {
+      const m = calculateAllMetrics();
+      const totalDailySats = m.totalDailySats;
+
+      const months = 8;
+      const requiredDailyRevCAD = BASE_INVEST_CAD / months;
+      const requiredDailyRevUSD = (requiredDailyRevCAD / 1.39) / 30;
+
+      const requiredBtcPrice = (requiredDailyRevUSD * 100000000) / totalDailySats;
+      return Math.round(requiredBtcPrice);
+    }
+
+    function satsPerGJ_AECO() {
+      return btcPrice > 0 ? Math.round((aecoPrice / btcPrice) * 100000000) : 0;
+    }
+
+    function formatNumber(num) { return (num || 0).toLocaleString('en-US'); }
+    function formatCAD(num) { return 'C$' + num.toLocaleString('en-US'); }
+
     function createWidgets() {
+      const baseNow = getSetupMetrics();
       const m = calculateAllMetrics();
 
       const items = [
@@ -134,7 +175,7 @@
           tooltip: `BTC price needed for exactly 8 months payback (Base case, 30 days/month)` },
 
         { code: "PAYBACK", label: "Payback Period", color: "lime", 
-          value: "38.5", 
+          value: baseNow.paybackMonths, 
           unit: "Base Case (months)", 
           tooltip: `Calculated with current BTC price and 30% CAGR growth\nBase case only` }
       ];
@@ -153,25 +194,6 @@
         container.appendChild(card);
       });
     }
-
-    function calculateBtcPriceFor8MonthPayback() {
-      const m = calculateAllMetrics();
-      const totalDailySats = m.totalDailySats;
-
-      const months = 8;
-      const requiredDailyRevCAD = BASE_INVEST_CAD / months;
-      const requiredDailyRevUSD = (requiredDailyRevCAD / 1.39) / 30;
-
-      const requiredBtcPrice = (requiredDailyRevUSD * 100000000) / totalDailySats;
-      return Math.round(requiredBtcPrice);
-    }
-
-    function satsPerGJ_AECO() {
-      return btcPrice > 0 ? Math.round((aecoPrice / btcPrice) * 100000000) : 0;
-    }
-
-    function formatNumber(num) { return (num || 0).toLocaleString('en-US'); }
-    function formatCAD(num) { return 'C$' + num.toLocaleString('en-US'); }
 
     function updateDashboard() {
       createWidgets();
