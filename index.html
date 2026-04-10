@@ -174,17 +174,17 @@
         { code: "WTI", label: "WTI", color: "emerald", value: formatNumber(Math.round((wtiPrice / btcPrice) * 1e8)), unit: "SATS / bbl", tooltip: `WTI: $${wtiPrice.toFixed(2)} (live via OilPriceAPI)\nLive BTC: $${btcPrice.toLocaleString()}` },
         { code: "AECO", label: "AECO Alberta", color: "amber", value: formatNumber(satsPerGJ_AECO()), unit: "SATS / GJ", tooltip: `AECO: C$${aecoPrice.toFixed(2)} (live via OilPriceAPI)` },
 
-        { code: "MINING", label: "M70S+ Mining Revenue", color: "sky", value: formatNumber(miningBase), unit: `<span class="sats-unit">SATS / GJ (Base)</span>`, tooltip: `973 miners × 10,980 sats/miner/day ÷ 880 GJ/day = 12,140 SATS/GJ` },
+        { code: "MINING", label: "M70S+ Mining Revenue", color: "orange", value: formatNumber(miningBase), unit: `<span class="sats-unit">SATS / GJ (Base)</span>`, tooltip: `973 miners × 10,980 sats/miner/day ÷ 880 GJ/day = 12,140 SATS/GJ` },
 
         { code: "MULTIPLIER", label: "Mining Multiplier", color: "violet", value: multiplier, unit: "×", tooltip: `Mining revenue vs selling raw AECO gas (Base case)` },
 
-        { code: "DAILY_NOW", label: "Daily Sats (Base Case)", color: "cyan", value: formatNumber(m.totalDailySats), unit: `<span class="sats-unit">SATS/day</span>`, tooltip: `973 M70S+ miners × 10,980 sats/miner/day = 10,683,540 SATS/day` },
+        { code: "DAILY_NOW", label: "Daily Sats (Base Case)", color: "orange", value: formatNumber(m.totalDailySats), unit: `<span class="sats-unit">SATS/day</span>`, tooltip: `973 M70S+ miners × 10,980 sats/miner/day = 10,683,540 SATS/day` },
 
         { code: "POWER", label: "Power Required", color: "blue", value: m.totalPowerMW, unit: "MW", tooltip: `Realistic sour gas turbine output at 30% efficiency` },
 
         { code: "BASE_INVEST", label: "Base Investment", color: "rose", value: formatCAD(BASE_INVEST_CAD), unit: "CAD", tooltip: `Conservative C$12.5M (ASICS + turbines + infrastructure)` },
 
-        { code: "FOOTPRINT", label: "Physical Footprint", color: "emerald", value: formatNumber(m.sqMeters), unit: "m²", tooltip: `Space for 973 M70S+ miners (~0.12 m² each)` },
+        { code: "FOOTPRINT", label: "Physical Footprint", color: "emerald", value: formatNumber(m.sqMeters), unit: "m²", tooltip: `Space for 973 M70S+ miners (10m x ~12m)` },
 
         { code: "BTC_8MONTH", label: "BTC Price for 8 Month Payback", color: "amber", value: formatNumber(btcFor8Month), unit: "USD", tooltip: `BTC price needed for exactly 8 months payback (Base case)` },
 
