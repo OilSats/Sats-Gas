@@ -74,7 +74,7 @@
     const BASE_SATS_PER_TH = 45;
     const BULL_SATS_PER_TH = 55;
 
-    const POWER_LAW_EXPONENT = 5.8;
+    const POWER_LAW_EXPONENT = 5.8;     // Bitbo Linear Regression Fit style
 
     async function fetchLivePrices() {
       console.log("=== Fetching live prices ===");
@@ -130,13 +130,11 @@
       return Math.round(dailySats / gjPerDay);
     }
 
-    // Power Law BTC price for a given number of months from today
+    // Power Law BTC price projection for N months from today (aligned with Bitbo Linear Regression Fit)
     function getPowerLawBtcPrice(monthsFromNow) {
       if (monthsFromNow <= 0) return btcPrice;
       const daysFromNow = monthsFromNow * 30.437;
-      // Approximate daily growth factor from power law exponent
-      const dailyGrowth = Math.pow(1 + (POWER_LAW_EXPONENT / 365), 1);
-      const growthFactor = Math.pow(dailyGrowth, daysFromNow);
+      const growthFactor = Math.pow(daysFromNow / 365 + 1, POWER_LAW_EXPONENT);
       return Math.round(btcPrice * growthFactor);
     }
 
@@ -145,7 +143,6 @@
       let isPostHalving = false;
       let dailySatsPerMiner = dailySatsMinedPerUnit(scenario, false);
 
-      // Initial payback estimate with current price
       let totalDailySats = minersSupported * dailySatsPerMiner;
       let dailyRevUSD = (totalDailySats / 100000000) * btcPrice;
       let paybackMonths = dailyRevUSD > 0 
@@ -159,7 +156,7 @@
         totalDailySats = minersSupported * dailySatsPerMiner;
       }
 
-      // Use Power Law BTC price scaled over the payback period
+      // Scale BTC price with Power Law over the payback period (aligned with Bitbo ~$250k in Sep 2027)
       const projectedBtcPrice = getPowerLawBtcPrice(paybackMonths);
       dailyRevUSD = (totalDailySats / 100000000) * projectedBtcPrice;
       paybackMonths = (BASE_INVEST_CAD / (dailyRevUSD * 1.39)) / 30;
@@ -231,7 +228,7 @@
         { code: "PAYBACK", label: "Payback Period", color: "lime", 
           value: `${bearNow.paybackMonths}<br>${baseNow.paybackMonths}<br>${bullNow.paybackMonths}`, 
           unit: "Bear<br>Base<br>Bull (months)", 
-          tooltip: `Bitcoin Power Law: Price grows as ~t^5.8 (R² ≈ 0.955)\n• Bear: pre-halving sats up to 24 months, then switches to post-halving if longer\n• BTC price scales with Power Law over the payback period\nZero Day = today (live BTC price)` }
+          tooltip: `Bitcoin Long-Term Power Law (Bitbo Linear Regression Fit, Zero Day 2011-01-05):\nPrice grows as ~t^5.8 (R² ≈ 0.955)\n• Bear: pre-halving sats up to 24 months, then switches to post-halving if longer\n• BTC price scales with Power Law over the payback period (~$250k in Sep 2027)\nZero Day = today (live BTC price)` }
       ];
 
       const container = document.getElementById("cards");
