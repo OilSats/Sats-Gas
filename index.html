@@ -47,7 +47,7 @@
 
   <div class="max-w-6xl mx-auto px-4 sm:px-6 py-8">
     <div class="text-center text-gray-500 text-xs mb-2">
-      Version 2026-04-10 • 973 Miners • 10,683,540 SATS/day • 12,140 SATS/GJ
+      Version 2026-04-10 • Fixed Math • 973 Miners • 10,683,540 SATS/day
     </div>
 
     <div id="last-updated" class="text-center text-gray-500 text-xs mb-6">
@@ -76,7 +76,6 @@
     const BASE_SATS_PER_TH = 45;
 
     async function fetchLivePrices() {
-      console.log("=== Fetching live prices ===");
       try {
         const res = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd", { cache: "no-store" });
         if (res.ok) {
@@ -95,7 +94,7 @@
       const totalPowerMW = (totalPowerKW / 1000).toFixed(2);
       const minersSupported = Math.floor(totalPowerKW / M70S_POWER_KW);
       const sqMeters = Math.round(minersSupported * SQM_PER_MINER);
-      return { minersSupported, sqMeters, totalPowerMW };
+      return { minersSupported, sqMeters, totalPowerMW, gjPerDay };
     }
 
     function dailySatsMinedPerUnit(isPostHalving = false) {
@@ -108,11 +107,34 @@
       return btcPrice > 0 ? Math.round((aecoPrice / btcPrice) * 100000000) : 0;
     }
 
-    function satsPerGJ_Mining(isPostHalving = false) {
-      const { minersSupported } = getGasPoweredMetrics();
-      const dailySats = minersSupported * dailySatsMinedPerUnit(isPostHalving);
-      const gjPerDay = GAS_VOLUME_M3_PER_DAY * (GJ_PER_E3M3 / 1000);
-      return Math.round(dailySats / gjPerDay);
+    function getSetupMetrics() {
+      const metrics = getGasPoweredMetrics();
+      let isPostHalving = false;
+      let dailySatsPerMiner = dailySatsMinedPerUnit(false);
+
+      let totalDailySats = metrics.minersSupported * dailySatsPerMiner;
+      let dailyRevUSD = (totalDailySats / 100000000) * btcPrice;
+      let paybackMonths = dailyRevUSD > 0 
+        ? ((BASE_INVEST_CAD / (dailyRevUSD * 1.39)) / 30) 
+        : 999;
+
+      if (paybackMonths > 24) {
+        isPostHalving = true;
+        dailySatsPerMiner = dailySatsMinedPerUnit(true);
+        totalDailySats = metrics.minersSupported * dailySatsPerMiner;
+      }
+
+      const projectedBtcPrice = getPowerLawBtcPrice(paybackMonths);
+      dailyRevUSD = (totalDailySats / 100000000) * projectedBtcPrice;
+      paybackMonths = (BASE_INVEST_CAD / (dailyRevUSD * 1.39)) / 30;
+
+      return { totalDailySats: Math.round(totalDailySats), paybackMonths: paybackMonths.toFixed(1) };
+    }
+
+    function satsPerGJ_Mining() {
+      const metrics = getGasPoweredMetrics();
+      const totalDailySats = metrics.minersSupported * dailySatsMinedPerUnit(false);
+      return Math.round(totalDailySats / metrics.gjPerDay);
     }
 
     function getPowerLawBtcPrice(monthsFromNow) {
@@ -125,34 +147,9 @@
       return Math.round(btcPrice * Math.pow(ratio, POWER_LAW_EXPONENT));
     }
 
-    function getSetupMetrics() {
-      const { minersSupported } = getGasPoweredMetrics();
-      let isPostHalving = false;
-      let dailySatsPerMiner = dailySatsMinedPerUnit(false);
-
-      let totalDailySats = minersSupported * dailySatsPerMiner;
-      let dailyRevUSD = (totalDailySats / 100000000) * btcPrice;
-      let paybackMonths = dailyRevUSD > 0 
-        ? ((BASE_INVEST_CAD / (dailyRevUSD * 1.39)) / 30) 
-        : 999;
-
-      if (paybackMonths > 24) {
-        isPostHalving = true;
-        dailySatsPerMiner = dailySatsMinedPerUnit(true);
-        totalDailySats = minersSupported * dailySatsPerMiner;
-      }
-
-      const projectedBtcPrice = getPowerLawBtcPrice(paybackMonths);
-      dailyRevUSD = (totalDailySats / 100000000) * projectedBtcPrice;
-      paybackMonths = (BASE_INVEST_CAD / (dailyRevUSD * 1.39)) / 30;
-
-      return { totalDailySats: Math.round(totalDailySats), paybackMonths: paybackMonths.toFixed(1) };
-    }
-
     function calculateBtcPriceFor8MonthPayback() {
-      const { minersSupported } = getGasPoweredMetrics();
-      const dailySatsPerMiner = dailySatsMinedPerUnit(false);
-      const totalDailySats = minersSupported * dailySatsPerMiner;
+      const metrics = getGasPoweredMetrics();
+      const totalDailySats = metrics.minersSupported * dailySatsMinedPerUnit(false);
 
       const months = 8;
       const requiredDailyRevCAD = BASE_INVEST_CAD / months;
@@ -167,7 +164,7 @@
 
     function createWidgets() {
       const baseNow = getSetupMetrics();
-      const miningBase = satsPerGJ_Mining(false);
+      const miningBase = satsPerGJ_Mining();
       const multiplier = (miningBase / satsPerGJ_AECO()).toFixed(1) || "—";
       const btcFor8Month = calculateBtcPriceFor8MonthPayback();
 
