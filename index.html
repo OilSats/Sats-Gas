@@ -74,7 +74,7 @@
     const BASE_SATS_PER_TH = 45;
     const BULL_SATS_PER_TH = 55;
 
-    const POWER_LAW_EXPONENT = 5.8;     // Bitbo Linear Regression Fit style
+    const POWER_LAW_EXPONENT = 5.8;
 
     async function fetchLivePrices() {
       console.log("=== Fetching live prices ===");
@@ -130,11 +130,13 @@
       return Math.round(dailySats / gjPerDay);
     }
 
-    // Power Law BTC price projection for N months from today (aligned with Bitbo Linear Regression Fit)
+    // Conservative Power Law BTC price projection (aligned with Bitbo ~$250k in Sep 2027)
     function getPowerLawBtcPrice(monthsFromNow) {
       if (monthsFromNow <= 0) return btcPrice;
-      const daysFromNow = monthsFromNow * 30.437;
-      const growthFactor = Math.pow(daysFromNow / 365 + 1, POWER_LAW_EXPONENT);
+      // Gentle growth factor to match Bitbo trajectory (~$250k in ~17 months)
+      const monthsTo250k = 17; // Sep 2027
+      const targetRatio = 250000 / btcPrice;
+      const growthFactor = Math.pow(targetRatio, monthsFromNow / monthsTo250k);
       return Math.round(btcPrice * growthFactor);
     }
 
@@ -156,7 +158,7 @@
         totalDailySats = minersSupported * dailySatsPerMiner;
       }
 
-      // Scale BTC price with Power Law over the payback period (aligned with Bitbo ~$250k in Sep 2027)
+      // Use Power Law scaled BTC price
       const projectedBtcPrice = getPowerLawBtcPrice(paybackMonths);
       dailyRevUSD = (totalDailySats / 100000000) * projectedBtcPrice;
       paybackMonths = (BASE_INVEST_CAD / (dailyRevUSD * 1.39)) / 30;
