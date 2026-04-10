@@ -74,7 +74,7 @@
     const BASE_SATS_PER_TH = 45;
     const BULL_SATS_PER_TH = 55;
 
-    const POWER_LAW_EXPONENT = 5.8;     // Standard Bitcoin Power Law exponent
+    const POWER_LAW_EXPONENT = 5.8;
 
     async function fetchLivePrices() {
       console.log("=== Fetching live prices ===");
@@ -130,10 +130,13 @@
       return Math.round(dailySats / gjPerDay);
     }
 
-    // Power Law BTC price projection for a given number of months from today
+    // Power Law BTC price for a given number of months from today
     function getPowerLawBtcPrice(monthsFromNow) {
-      const daysFromNow = monthsFromNow * 30.437; // average month length
-      const growthFactor = Math.pow(1 + (POWER_LAW_EXPONENT / 365), daysFromNow); // approximate daily growth
+      if (monthsFromNow <= 0) return btcPrice;
+      const daysFromNow = monthsFromNow * 30.437;
+      // Approximate daily growth factor from power law exponent
+      const dailyGrowth = Math.pow(1 + (POWER_LAW_EXPONENT / 365), 1);
+      const growthFactor = Math.pow(dailyGrowth, daysFromNow);
       return Math.round(btcPrice * growthFactor);
     }
 
@@ -142,21 +145,21 @@
       let isPostHalving = false;
       let dailySatsPerMiner = dailySatsMinedPerUnit(scenario, false);
 
-      // Calculate initial payback with current price
+      // Initial payback estimate with current price
       let totalDailySats = minersSupported * dailySatsPerMiner;
       let dailyRevUSD = (totalDailySats / 100000000) * btcPrice;
       let paybackMonths = dailyRevUSD > 0 
         ? ((BASE_INVEST_CAD / (dailyRevUSD * 1.39)) / 30) 
         : 999;
 
-      // Bear rule: use pre-halving up to 24 months, then switch to post-halving if longer
+      // Bear rule: pre-halving up to 24 months, then switch to post-halving if longer
       if (scenario === "bear" && paybackMonths > 24) {
         isPostHalving = true;
         dailySatsPerMiner = dailySatsMinedPerUnit("bear", true);
         totalDailySats = minersSupported * dailySatsPerMiner;
       }
 
-      // Use Power Law BTC price for the calculated payback period
+      // Use Power Law BTC price scaled over the payback period
       const projectedBtcPrice = getPowerLawBtcPrice(paybackMonths);
       dailyRevUSD = (totalDailySats / 100000000) * projectedBtcPrice;
       paybackMonths = (BASE_INVEST_CAD / (dailyRevUSD * 1.39)) / 30;
@@ -228,7 +231,7 @@
         { code: "PAYBACK", label: "Payback Period", color: "lime", 
           value: `${bearNow.paybackMonths}<br>${baseNow.paybackMonths}<br>${bullNow.paybackMonths}`, 
           unit: "Bear<br>Base<br>Bull (months)", 
-          tooltip: `Bitcoin Power Law: Price grows as ~t^5.8 (R² ≈ 0.955)\n• Bear: pre-halving sats up to 24 months, then post-halving if longer\n• BTC price scales with Power Law over the payback period\nZero Day = today (live BTC price)` }
+          tooltip: `Bitcoin Power Law: Price grows as ~t^5.8 (R² ≈ 0.955)\n• Bear: pre-halving sats up to 24 months, then switches to post-halving if longer\n• BTC price scales with Power Law over the payback period\nZero Day = today (live BTC price)` }
       ];
 
       const container = document.getElementById("cards");
